@@ -1,50 +1,48 @@
-# Source Code Migration Map
+# 源代码迁移导读
 
-This document records what was migrated from `tianyueni78-cyber/codex-AGV` and
-how each part should be used for the order-cancellation project.
+本文档记录从 `tianyueni78-cyber/codex-AGV` 迁移了哪些内容，以及这些内容在订单取消项目中如何使用。
 
-## 1. Migration Source
+## 1. 迁移来源
 
-Source repository:
+源仓库：
 
 ```text
 https://github.com/tianyueni78-cyber/codex-AGV
 ```
 
-Target repository:
+目标仓库：
 
 ```text
 https://github.com/tianyueni78-cyber/codex-AGV-order-cancellation
 ```
 
-Purpose:
+迁移目的：
 
 ```text
-Reuse the normal FJSP-AGV scheduling baseline before adding order cancellation.
+在新增订单取消功能之前，先复用原 FJSP-AGV 正常调度基线。
 ```
 
-## 2. Migrated Directories
+## 2. 已迁移目录
 
-| Path | Role in original project | Role in this project |
+| 路径 | 原项目作用 | 本项目作用 |
 |---|---|---|
-| `raw_code/` | Original archived MATLAB code and baseline behavior reference | Read-only baseline. Do not edit. |
-| `src/` | Refactored source code for data, decoding, evaluation, search, metrics, and visualization | Main source base for future order-cancellation wrappers. |
-| `configs/` | Small, medium, formal, independent, and baseline configuration files | Starting point for cancellation-specific configs. |
-| `scripts/` | Reproducible MATLAB run entries | Starting point for future cancellation run scripts. |
-| `tests/` | Lightweight tests, static checks, and raw-compare tests | Starting point for cancellation smoke tests. |
-| `data_sample/` | Minimal sample data | First data source for smoke tests. |
-| `docs/` | Original source maps, reproduction steps, and engineering notes | Background knowledge for understanding the migrated code. |
+| `raw_code/` | 原始 MATLAB 归档代码和 baseline 行为参考 | 只读基线，不修改 |
+| `src/` | 数据、解码、评价、搜索、指标和可视化等重构源码 | 后续订单取消包装函数的主要基础 |
+| `configs/` | small、medium、formal、independent 和 baseline 配置 | 后续订单取消配置的起点 |
+| `scripts/` | 可复现 MATLAB 运行入口 | 后续订单取消运行脚本的起点 |
+| `tests/` | 轻量测试、静态检查和 raw 对照测试 | 后续订单取消烟雾测试的起点 |
+| `data_sample/` | 最小样例数据 | 第一批烟雾测试数据 |
+| `docs/` | 原项目源码地图、复现步骤和工程说明 | 理解迁移代码的背景资料 |
 
-`outputs/` was not migrated. New generated outputs should be created locally
-under `outputs/` and should not be committed.
+`outputs/` 没有迁移。新生成的输出应写入本地 `outputs/`，并且不提交 Git。
 
-## 3. Source Layer Map
+## 3. 源码层说明
 
 ### `src/data/`
 
-Reads FJSP, machine, and AGV data.
+负责读取 FJSP、机器和 AGV 数据。
 
-Important files:
+重要文件：
 
 ```text
 src/data/read_fjsp.m
@@ -52,82 +50,82 @@ src/data/read_machine_data.m
 src/data/read_agv_data.m
 ```
 
-Order-cancellation use:
+订单取消中的用途：
 
 ```text
-Reuse unchanged for baseline data loading.
+保持不变，复用为基线数据读取层。
 ```
 
 ### `src/encoding/`
 
-Builds and validates chromosome structures.
+负责构造和校验染色体结构。
 
-Order-cancellation use:
+订单取消中的用途：
 
 ```text
-Reuse encoding semantics for remaining unfinished operations after cancellation.
-Do not change global encoding until the cancellation subset contract is defined.
+在取消事件发生后，对剩余未完成工序复用原编码语义。
+在取消子问题契约明确前，不全局修改编码层。
 ```
 
 ### `src/decoding/`
 
-Decodes chromosomes into machine and AGV schedules.
+负责将染色体解码为机器和 AGV 调度计划。
 
-Order-cancellation use:
+订单取消中的用途：
 
 ```text
-Likely reuse through a wrapper that freezes completed tasks and excludes
-cancelled unfinished operations.
+后续很可能通过包装函数复用：冻结已完成任务，排除被取消订单未完成工序，
+再对剩余工序解码。
 ```
 
 ### `src/evaluation/`
 
-Evaluates decoded schedules and objective values.
+负责评价解码后的调度计划和目标函数。
 
-Order-cancellation use:
+订单取消中的用途：
 
 ```text
-Reuse makespan and energy calculations.
-Add cancellation-specific disruption metrics separately.
+复用最大完工时间和能耗计算。
+订单取消专用扰动指标应单独新增，不直接塞进原评价层。
 ```
 
 ### `src/search/`
 
-Contains independent NSGA-II search logic.
+包含 independent NSGA-II 搜索逻辑。
 
-Order-cancellation use:
+订单取消中的用途：
 
 ```text
-Use as the first complete-rescheduling baseline after the cancellation problem
-has been reduced to remaining unfinished operations.
+当订单取消问题被转化为“剩余未完成工序重调度”后，
+作为第一版完全重调度搜索基线。
 ```
 
 ### `src/metrics/`
 
-Computes Pareto and multi-objective quality metrics.
+负责 Pareto 和多目标结果质量指标。
 
-Order-cancellation use:
+订单取消中的用途：
 
 ```text
-Reuse for Pareto summaries. Add order-cancellation strategy metrics such as
-Cmax_delta, SD, TD, and Y in a separate module when implementation begins.
+复用 Pareto 结果汇总。
+后续在独立模块中新增 Cmax_delta、SD、TD 和 Y 等订单取消策略指标。
 ```
 
 ### `src/visualization/`
 
-Generates visualization artifacts such as Gantt charts and result plots.
+负责生成甘特图和结果图等可视化产物。
 
-Order-cancellation use:
+订单取消中的用途：
 
 ```text
-Reuse later for comparing original, local-repair, and complete-reschedule plans.
+后续用于对比原计划、局部修复计划和完全重调度计划。
 ```
 
-## 4. Planned New Order-Cancellation Modules
+## 4. 后续建议新增模块
 
-Do not implement these until the baseline call chain is confirmed.
+在确认基线调用链之前，不要急着实现这些文件。
 
-Suggested future locations:
+建议未来位置：
 
 ```text
 src/cancellation/create_order_cancellation_event.m
@@ -139,7 +137,7 @@ src/rescheduling/decode_order_cancel_complete_reschedule.m
 src/evaluation/evaluate_order_cancel_candidate.m
 ```
 
-Suggested future scripts:
+建议未来脚本：
 
 ```text
 scripts/run_order_cancel_state_smoke.m
@@ -148,7 +146,7 @@ scripts/run_order_cancel_complete_reschedule_smoke.m
 scripts/run_order_cancel_strategy_comparison.m
 ```
 
-Suggested future tests:
+建议未来测试：
 
 ```text
 tests/test_order_cancellation_event.m
@@ -157,21 +155,21 @@ tests/test_order_cancel_local_repair.m
 tests/test_order_cancel_strategy_metrics.m
 ```
 
-## 5. First Safe Next Step
+## 5. 第一个安全下一步
 
-The first implementation task should be static and narrow:
+第一个实现任务应保持静态、窄范围：
 
 ```text
-Identify the normal scheduling call chain in the migrated codex-AGV source.
-Do not run MATLAB.
-Do not generate outputs.
-Do not modify raw_code/.
+识别迁移后的 codex-AGV 正常调度调用链。
+不运行 MATLAB。
+不生成 outputs。
+不修改 raw_code/。
 ```
 
-Expected evidence:
+期望证据：
 
 ```text
-A short document or README section listing the data loading, decoding, AGV,
-evaluation, and NSGA-II entry points that order cancellation will reuse.
+一份简短文档或 README 小节，列出订单取消将复用的数据读取、解码、
+AGV 调度、评价和 NSGA-II 入口。
 ```
 

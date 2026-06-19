@@ -1,149 +1,119 @@
-# FJSP-AGV Order Cancellation Rescheduling
+# FJSP-AGV 订单取消动态重调度
 
-This repository studies dynamic rescheduling after order cancellation on top of the
-original `codex-AGV` FJSP-AGV scheduling code.
+本仓库用于在原 `codex-AGV` 的 FJSP-AGV 正常调度代码基础上，研究订单取消发生后的动态重调度问题。
 
-The first research target is intentionally narrow: start from an existing normal
-FJSP-AGV schedule, cancel one order at a known time, repair or rebuild the
-remaining schedule, and compare efficiency improvement against schedule
-disruption.
+第一阶段研究范围刻意收窄：从一个已经生成的正常 FJSP-AGV 调度计划出发，在已知时刻取消一个订单，修复或重建剩余订单的计划，并比较效率收益与计划扰动。
 
-## 1. Problem Scope
+## 1. 问题范围
 
-Order cancellation is treated as a task-set change problem, not as a machine
-availability problem.
+订单取消被视为“任务集合变化”问题，不是“机器资源不可用”问题。
 
-In scope for the first stage:
+第一阶段包含：
 
-1. Use the original `codex-AGV` data, decoding, AGV, energy, and NSGA-II code as
-   the base implementation.
-2. Model one order cancellation event with known `cancel_time`.
-3. Freeze completed work before the cancellation time.
-4. Remove the cancelled order's unfinished operations and related AGV tasks.
-5. Generate candidate reschedules for the remaining orders.
-6. Evaluate makespan, total energy, and disruption to the old schedule.
+1. 以原 `codex-AGV` 的数据读取、解码、AGV 调度、能耗计算和 NSGA-II 代码为基础。
+2. 建模一个取消时刻已知的订单取消事件。
+3. 冻结取消时刻以前已经完成的任务。
+4. 删除被取消订单尚未完成的工序和相关 AGV 运输任务。
+5. 为剩余订单生成候选重调度方案。
+6. 评价最大完工时间、总能耗和对原计划的扰动。
 
-Out of scope for the first stage:
+第一阶段不包含：
 
-1. Machine breakdown or machine repair windows.
-2. Multiple cancellation events.
-3. New order insertion.
-4. AGV failure.
-5. Stochastic processing time or uncertain cancellation time.
-6. Proof of global optimality.
+1. 机器故障或机器维修时间窗。
+2. 多个订单连续取消。
+3. 新订单插入。
+4. AGV 故障。
+5. 加工时间随机变化或取消时刻不确定。
+6. 全局最优解证明。
 
-Machine-failure work should remain separate. It may become a later combined
-multi-disturbance framework, but this project first isolates order cancellation.
+机器故障研究应与本项目保持分离。后续可以扩展为多扰动统一框架，但本项目第一阶段先单独研究订单取消。
 
-## 2. Literature Inspiration
+## 2. 借鉴论文
 
-This project borrows ideas from rescheduling literature, while adapting them to
-FJSP-AGV order cancellation.
+本项目借鉴动态重调度论文中的思想，并将其改造到 FJSP-AGV 订单取消场景中。
 
-1. Rener, Salassa, and T'kindt, "Single machine rescheduling for new orders:
-   properties and complexity results" (arXiv:2307.14876).
+1. Rener、Salassa 和 T'kindt 的论文：`Single machine rescheduling for new orders: properties and complexity results`，arXiv:2307.14876。
 
-   Useful idea: after a dynamic event, the new schedule should not only optimize
-   the production objective, but also control disruption to the old jobs. The
-   paper uses completion-time deviation constraints for old jobs. For order
-   cancellation, the analogous idea is to measure completion-time deviation of
-   the remaining non-cancelled orders.
+   可借鉴思想：动态事件发生后，新计划不仅要优化生产目标，还要控制对原有任务的扰动。该论文用旧任务完成时间偏移来限制扰动。对应到订单取消问题中，可以度量未取消订单相对原计划的完成时间偏移。
 
-2. Tang et al., "Deep Reinforcement Learning for Flexible Job Shop Scheduling
-   with Random Job Arrivals" (arXiv:2605.22773).
+2. Tang 等人的论文：`Deep Reinforcement Learning for Flexible Job Shop Scheduling with Random Job Arrivals`，arXiv:2605.22773。
 
-   Useful idea: dynamic scheduling can be modeled as an event-triggered process.
-   This project does not use reinforcement learning in the first stage, but keeps
-   the event-triggered structure: cancellation event, state extraction, candidate
-   generation, evaluation, and selection.
+   可借鉴思想：动态调度可以建模为事件触发流程。本项目第一阶段不使用强化学习，但保留事件触发结构：取消事件、状态提取、候选方案生成、评价和选择。
 
-## 3. Scheduling Thought
+## 3. 调度思想
 
-The planned research chain is:
+计划中的研究链路为：
 
 ```text
-normal FJSP-AGV schedule
-  -> order cancellation event
-  -> cancellation-time state extraction
-  -> local repair candidate
-  -> complete rescheduling candidate
-  -> metric calculation
-  -> final strategy selection
+正常 FJSP-AGV 调度计划
+  -> 订单取消事件
+  -> 取消时刻状态提取
+  -> 局部修复候选方案
+  -> 完全重调度候选方案
+  -> 指标计算
+  -> 最终策略选择
 ```
 
-Two candidate strategies are planned.
+项目计划同时生成两类候选方案。
 
-### 3.1 Local Repair
+### 3.1 局部修复
 
-Local repair keeps the original plan as much as possible:
+局部修复尽量保持原计划不变：
 
-1. Remove unfinished operations of the cancelled order.
-2. Remove related unfinished AGV transport tasks.
-3. Keep remaining orders' operation order, machine choices, and AGV choices when
-   feasible.
-4. Compress idle time or left-shift remaining tasks only when constraints remain
-   valid.
+1. 删除被取消订单尚未完成的工序。
+2. 删除相关尚未执行的 AGV 运输任务。
+3. 在可行时保持剩余订单的原工序顺序、机器选择和 AGV 选择。
+4. 仅在约束仍然满足时压缩空闲时间或左移剩余任务。
 
-This strategy prioritizes stability and low disruption.
+该策略优先保证计划稳定性和低扰动。
 
-### 3.2 Complete Rescheduling
+### 3.2 完全重调度
 
-Complete rescheduling freezes executed tasks and re-optimizes the remaining
-unfinished operations of non-cancelled orders.
+完全重调度冻结已经执行的任务，只对未取消订单中尚未完成的工序重新优化。
 
-The first implementation should reuse the original independent NSGA-II,
-encoding, decoding, AGV, and evaluation layers where possible.
+第一版实现应尽量复用原项目中的 independent NSGA-II、编码、解码、AGV 调度和评价层。
 
-This strategy may improve final completion time and energy, but can change more
-machine assignments and task timings.
+该策略可能改善最终完工时间和能耗，但会带来更多机器分配和任务时间变化。
 
-## 4. Algorithm Plan
+## 4. 算法计划
 
-The first algorithmic baseline is the existing independent NSGA-II search from
-`codex-AGV`.
+第一版算法基线使用 `codex-AGV` 已有的 independent NSGA-II 搜索。
 
-Initial objectives:
+初始优化目标：
 
-1. Final unloading completion time.
-2. Total energy.
+1. 最终卸载完工时间。
+2. 总能耗。
 
-Additional rescheduling metrics:
+订单取消重调度补充指标：
 
 ```text
-Cmax_delta = candidate final unloading time - original final unloading time
-SD         = number of machine-assignment changes among remaining operations
-TD         = total completion-time deviation of remaining orders
+Cmax_delta = 候选最终卸载时间 - 原计划最终卸载时间
+SD         = 剩余工序中机器分配发生变化的数量
+TD         = 剩余订单完成时间总偏移
 Y          = omega1*Cmax_delta + omega2*SD + omega3*TD
 ```
 
-`TD` is the main borrowed idea from the new-order rescheduling paper: dynamic
-rescheduling should control how much the old plan changes. Here, "old jobs" map
-to remaining non-cancelled orders.
+其中 `TD` 是从新订单重调度论文中借鉴的核心思想：动态重调度不能只看新目标，也要控制原计划的变化。在本项目中，“旧任务”对应未被取消的剩余订单。
 
-The first version does not claim global optimality. It should report the best
-candidate found under the configured population, generation count, seed, and
-weights.
+第一版不声称全局最优。结果只表示在给定种群规模、迭代代数、随机种子和权重设置下搜索到的较优候选方案。
 
-## 5. Work Plan
+## 5. 工作计划
 
-### Stage A: Source Migration and Baseline Understanding
+### 阶段 A：源码迁移与基线理解
 
-Goal: preserve the original scheduling baseline and identify the normal schedule
-call chain.
+目标：保留原正常调度基线，并识别正常调度调用链。
 
-Verification:
+验收标准：
 
-1. Source directories from `codex-AGV` are present.
-2. A source-code map documents data, encoding, decoding, search, evaluation,
-   metrics, visualization, scripts, tests, and raw baseline code.
-3. No order-cancellation algorithm is added yet.
+1. 已迁移原 `codex-AGV` 源码目录。
+2. 有源代码导读文档说明数据、编码、解码、搜索、评价、指标、可视化、脚本、测试和原始代码的用途。
+3. 暂不新增订单取消算法。
 
-### Stage B: Order Cancellation Event and State Extraction
+### 阶段 B：订单取消事件与状态提取
 
-Goal: define a minimal cancellation event and extract schedule state at
-`cancel_time`.
+目标：定义最小订单取消事件，并提取 `cancel_time` 时刻的调度状态。
 
-Planned event fields:
+计划事件字段：
 
 ```matlab
 cancel.job_id
@@ -151,101 +121,103 @@ cancel.cancel_time
 cancel.policy
 ```
 
-First policy:
+第一版策略：
 
 ```text
 cancel_unstarted_operations_only
 ```
 
-Verification:
+验收标准：
 
-1. Completed, processing, and unstarted operations can be identified.
-2. Cancelled-order unfinished operations can be listed.
-3. A smoke test runs on sample data.
+1. 能识别已完成、正在加工和尚未开工的工序。
+2. 能列出被取消订单尚未完成的工序。
+3. 能在样例数据上通过烟雾测试。
 
-### Stage C: Local Repair Candidate
+### 阶段 C：局部修复候选方案
 
-Goal: remove cancelled unfinished work and build a feasible local repair schedule.
+目标：删除取消订单未完成任务，并构造可行的局部修复计划。
 
-Verification:
+验收标准：
 
-1. Cancelled unfinished operations do not appear in the candidate.
-2. Remaining operations respect job order.
-3. Machine and AGV time conflicts are rejected.
+1. 被取消订单的未完成工序不再出现在候选计划中。
+2. 剩余工序满足工件工序顺序。
+3. 能识别并拒绝机器和 AGV 时间冲突。
 
-### Stage D: Complete Rescheduling Candidate
+### 阶段 D：完全重调度候选方案
 
-Goal: reuse the independent decoding/search layers to reschedule remaining
-unfinished operations.
+目标：复用 independent 解码和搜索层，对剩余未完成工序重新调度。
 
-Verification:
+验收标准：
 
-1. Frozen tasks are preserved.
-2. Cancelled unfinished tasks are excluded.
-3. Remaining tasks are decoded into a feasible FJSP-AGV schedule.
+1. 冻结任务保持不变。
+2. 被取消的未完成任务被排除。
+3. 剩余任务能解码为可行的 FJSP-AGV 调度计划。
 
-### Stage E: Evaluation and Strategy Selection
+### 阶段 E：评价与策略选择
 
-Goal: compare local repair and complete rescheduling.
+目标：比较局部修复和完全重调度。
 
-Verification:
+验收标准：
 
-1. `Cmax_delta`, `SD`, `TD`, energy, and `Y` are computed.
-2. The selected strategy is the candidate with smaller `Y`.
-3. Results are written under `outputs/`.
+1. 能计算 `Cmax_delta`、`SD`、`TD`、能耗和 `Y`。
+2. 最终选择 `Y` 更小的候选方案。
+3. 结果写入 `outputs/`。
 
-### Stage F: Small Experiments
+### 阶段 F：小规模实验
 
-Goal: run a small set of cancellation scenarios.
+目标：运行一组订单取消场景。
 
-Minimum scenarios:
+最小场景：
 
-1. Early cancellation.
-2. Middle cancellation.
-3. Late cancellation.
+1. 早期取消。
+2. 中期取消。
+3. 后期取消。
 
-Verification:
+验收标准：
 
-1. Each scenario reports both candidate strategies.
-2. Each scenario passes schedule constraint checks.
-3. Multi-seed results are summarized before making research claims.
+1. 每个场景同时报告局部修复和完全重调度。
+2. 每个场景均通过调度约束检查。
+3. 多随机种子汇总后再形成研究结论。
 
-## 6. Repository Layout
+## 6. 仓库结构
 
 ```text
-raw_code/       Original archived code from codex-AGV. Read-only baseline.
-src/            Refactored source code migrated from codex-AGV.
-configs/        MATLAB configuration files.
-scripts/        Reproducible run entries.
-tests/          Lightweight tests and static checks.
-data_sample/    Minimal sample data.
-docs/           Source maps, plans, and reproduction notes.
-outputs/        Generated outputs and logs. Not committed.
+raw_code/       原 codex-AGV 归档代码，只读基线
+src/            从 codex-AGV 迁移的重构源码
+configs/        MATLAB 配置文件
+scripts/        可复现实验入口
+tests/          轻量测试和静态检查
+data_sample/    最小样例数据
+docs/           源码导读、计划和复现说明
+outputs/        生成的输出和日志，不提交 Git
 ```
 
-See `docs/00_system_overview/source_code_migration_map.md` for the migrated
-source-code map.
-
-## 7. Agent Rules
-
-Use `AGENTS.md` as the working contract for this repository.
-
-Core rules:
-
-1. Do not modify `raw_code/`.
-2. Do one small task at a time.
-3. Prefer static analysis before MATLAB runs.
-4. Ask before running MATLAB, launching experiments, or generating outputs.
-5. Keep machine-failure code and order-cancellation code separate.
-6. Preserve reproducibility through configs, scripts, tests, and outputs.
-
-## 8. Current Status
-
-Current repository status:
+源代码迁移说明见：
 
 ```text
-Stage A started.
-Original codex-AGV source structure has been migrated.
-Order-cancellation algorithms have not been implemented yet.
+docs/00_system_overview/source_code_migration_map.md
+```
+
+## 7. Agent 工作规则
+
+本仓库的工作约束见 `AGENTS.md`。
+
+核心规则：
+
+1. 不修改 `raw_code/`。
+2. 每次只做一个小任务。
+3. 默认先做静态分析。
+4. 运行 MATLAB、启动实验或生成 outputs 前先确认。
+5. 订单取消代码与机器故障代码保持分离。
+6. 通过 configs、scripts、tests 和 outputs 保证可复现。
+
+## 8. 当前状态
+
+当前项目状态：
+
+```text
+阶段 A 已开始。
+原 codex-AGV 源码结构已迁移。
+订单取消算法尚未实现。
 ```
 

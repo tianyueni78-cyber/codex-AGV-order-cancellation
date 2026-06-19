@@ -1,98 +1,90 @@
 # AGENTS.md
 
-Working rules for the `codex-AGV-order-cancellation` project.
+`codex-AGV-order-cancellation` 项目工作规则。
 
-## Project Focus
+## 项目 focus
 
-This repository studies order cancellation dynamic rescheduling on top of the
-original `codex-AGV` FJSP-AGV scheduling code.
+本仓库用于在原 `codex-AGV` 的 FJSP-AGV 正常调度代码基础上，研究订单取消动态重调度问题。
 
-Order cancellation must be treated as a separate disturbance from machine
-failure. Do not mix machine breakdown, repair windows, or machine-failure
-rescheduling logic into this project unless the user explicitly starts a later
-combined-disturbance stage.
+订单取消必须作为独立扰动处理，不要和机器故障混在一起。除非用户明确开启后续“多扰动统一框架”阶段，否则不要把机器故障、维修时间窗或机器故障重调度逻辑加入本项目。
 
-## Core Rules
+## 核心原则
 
-1. Preserve reproducibility above all else.
-2. Do one small task at a time.
-3. Do not refactor unrelated code.
-4. Do not change algorithm logic unless explicitly requested.
-5. Prefer clarity and stability over abstraction.
-6. Avoid over-engineering.
+1. 优先保证可复现。
+2. 每次只做一个小任务。
+3. 不重构无关代码。
+4. 不在未明确要求时改变算法逻辑。
+5. 优先清晰和稳定，不追求过度抽象。
+6. 避免过度工程化。
 
-## File Safety
+## 文件安全规则
 
-1. Never modify files in `raw_code/`.
-2. Never delete files automatically.
-3. Never overwrite `outputs/` without confirmation.
-4. Use relative paths in project code and docs.
-5. Do not hardcode local machine paths.
-6. Generated outputs and logs must go under `outputs/`.
+1. 永远不要修改 `raw_code/`。
+2. 不要自动删除文件。
+3. 覆盖 `outputs/` 前必须确认。
+4. 项目代码和文档中使用相对路径。
+5. 不写死本地机器绝对路径。
+6. 生成的输出和日志必须写入 `outputs/`。
 
-## Execution Policy
+## 执行策略
 
-Static analysis is the default.
+默认只做静态分析。
 
-Ask for confirmation before:
+以下操作前必须先确认：
 
-1. Running MATLAB.
-2. Launching experiments.
-3. Generating outputs.
-4. Editing multiple unrelated files.
-5. Copying additional source batches from another repository.
+1. 运行 MATLAB。
+2. 启动实验。
+3. 生成 outputs。
+4. 编辑多个无关文件。
+5. 从其他仓库继续批量复制源代码。
 
-## Project Structure
+## 项目结构
 
 ```text
-raw_code/       Original archived codex-AGV code. Read-only.
-src/            Refactored production code migrated from codex-AGV.
-configs/        MATLAB configuration files.
-scripts/        Reproducible run entries.
-tests/          Lightweight reproducibility tests.
-data_sample/    Minimal runnable datasets.
-docs/           Plans, source maps, and reproduction notes.
-outputs/        Generated outputs and logs. Not committed.
+raw_code/       原 codex-AGV 归档代码，只读
+src/            从 codex-AGV 迁移的重构生产代码
+configs/        MATLAB 配置文件
+scripts/        可复现实验入口
+tests/          轻量复现测试
+data_sample/    最小可运行数据集
+docs/           计划、源码导读和复现说明
+outputs/        生成的输出和日志，不提交 Git
 ```
 
-## Order Cancellation Scope
+## 订单取消研究范围
 
-First-stage scope:
+第一阶段范围：
 
-1. Single order cancellation.
-2. Known cancellation time.
-3. Machine and AGV resources are healthy.
-4. Cancel only unfinished work of the cancelled order.
-5. Freeze completed tasks before cancellation time.
-6. Compare local repair and complete rescheduling.
+1. 单个订单取消。
+2. 取消时刻已知。
+3. 机器和 AGV 均无故障。
+4. 只取消被取消订单尚未完成的部分。
+5. 冻结取消时刻以前已经完成的任务。
+6. 比较局部修复和完全重调度。
 
-Out of scope for the first stage:
+第一阶段不包含：
 
-1. Machine failure.
-2. Multiple cancellations.
-3. New order insertion.
-4. AGV failure.
-5. Uncertain repair/cancellation times.
-6. Global optimality proof.
+1. 机器故障。
+2. 多个订单取消。
+3. 新订单插入。
+4. AGV 故障。
+5. 维修或取消时刻不确定。
+6. 全局最优解证明。
 
-## Research Workflow
+## 研究工作流
 
-For every implementation step:
+每个实现步骤都要遵循：
 
-1. State assumptions and scope.
-2. Identify the smallest affected modules.
-3. Add or update a lightweight test first when feasible.
-4. Implement the smallest useful change.
-5. Verify with static checks or small sample tests.
-6. Report changed files, purpose, test result, and remaining risk.
+1. 先说明假设和范围。
+2. 找到最小受影响模块。
+3. 可行时先新增或更新轻量测试。
+4. 实现最小有用改动。
+5. 用静态检查或小样本测试验证。
+6. 报告更改文件、修改目的、测试结果和剩余风险。
 
-## Source Migration Rule
+## 源码迁移规则
 
-The original `codex-AGV` code was migrated to preserve a working scheduling
-baseline. Treat migrated source as a baseline until the order-cancellation
-extension point is clear.
+原 `codex-AGV` 代码迁移到本仓库，是为了保留可工作的正常调度基线。订单取消扩展点明确前，应把迁移代码视为基线。
 
-Do not rewrite the original decoding, evaluation, or NSGA-II layers globally.
-Add order-cancellation functionality through narrow wrappers or new modules
-first.
+不要全局重写原解码、评价或 NSGA-II 层。优先通过窄包装函数或新增模块实现订单取消功能。
 
