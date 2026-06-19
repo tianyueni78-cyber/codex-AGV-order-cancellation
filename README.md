@@ -192,13 +192,18 @@ docs/           源码导读、计划和复现说明
 outputs/        生成的输出和日志，不提交 Git
 ```
 
-源代码迁移说明见：
+## 7. 关键文档入口
 
-```text
-docs/00_system_overview/source_code_migration_map.md
-```
+后续新增重要项目文档时，必须同步在本节增加入口，避免文档散落后找不到。
 
-## 7. Agent 工作规则
+| 文档 | 内容 |
+|---|---|
+| [项目目标与分阶段工作流](docs/00_system_overview/project_goal_workflow.md) | 项目结束目标、阶段 A-G、小目标验收标准、scope 和 token 控制 |
+| [源代码迁移导读](docs/00_system_overview/source_code_migration_map.md) | 从原 `codex-AGV` 迁移了哪些源码，以及各层在订单取消项目中的用途 |
+| [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
+| [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
+
+## 8. Agent 工作规则
 
 本仓库的工作约束见 `AGENTS.md`。
 
@@ -211,7 +216,7 @@ docs/00_system_overview/source_code_migration_map.md
 5. 订单取消代码与机器故障代码保持分离。
 6. 通过 configs、scripts、tests 和 outputs 保证可复现。
 
-## 8. 当前状态
+## 9. 当前状态
 
 当前项目状态：
 
@@ -220,4 +225,3 @@ docs/00_system_overview/source_code_migration_map.md
 原 codex-AGV 源码结构已迁移。
 订单取消算法尚未实现。
 ```
-
