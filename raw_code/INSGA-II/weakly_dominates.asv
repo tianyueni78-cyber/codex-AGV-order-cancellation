@@ -1,0 +1,27 @@
+function d = weakly_dominates(fA, fB)
+% [d] = weakly_dominates(fA, fB)
+% Compares two solutions A and B given their objective function
+% values fA and fB. Returns whether A weakly dominates B.
+% Input:
+% - fA					- The objective function values of solution A
+% - fB					- The objective function values of solution B
+% Output:
+% - d					- d is 1 if fA dominates fB, otherwise d is 0
+
+
+% Elegant, but not very efficient
+% d = (all(fA <= fB) && any(fA < fB));
+
+
+d = true;
+for i = 1:length(fA)
+    %即对于length(fA)个目标值（本文为两个目标值且都是求解最小化）
+    %如果fA（旧目标函数值）存在某一维目标值大于新目标值fb
+    %则输出false
+%      if (fA(i) > fB(i))%，判断弱支配，B至少弱支配支配，外部需要修改~weakly_dominate
+     if (fB(i) > fA(i))%，判断强支配，B不可能强支配，外部需要修改weakly_dominate
+        d = false;
+        return
+    end
+end
+end

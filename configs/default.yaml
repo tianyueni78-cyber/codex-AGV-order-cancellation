@@ -1,0 +1,3 @@
+data_path: data_sample/sample.csv
+
+random_seed: 42
