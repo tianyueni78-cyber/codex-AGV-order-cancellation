@@ -64,9 +64,19 @@ for blockIdx = 1:numel(blocks)
     operation.block_index = blockIdx;
     operation.job_id = block.job;
     operation.operation_id = block.opera;
-    operation.start_time = block.start;
-    operation.end_time = block.end;
+    operation.start_time = require_scalar_time(block.start, ...
+        machineIdx, blockIdx, 'start');
+    operation.end_time = require_scalar_time(block.end, ...
+        machineIdx, blockIdx, 'end');
     operations(end + 1) = operation;
+end
+end
+
+function value = require_scalar_time(value, machineIdx, blockIdx, fieldName)
+if isempty(value) || ~isnumeric(value) || ~isscalar(value)
+    error('check_machine_table_feasibility:InvalidTimeValue', ...
+        'machineTable{%d} block %d field %s must be a numeric scalar.', ...
+        machineIdx, blockIdx, fieldName);
 end
 end
 

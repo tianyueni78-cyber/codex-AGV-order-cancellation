@@ -65,9 +65,19 @@ for blockIdx = 1:numel(blocks)
     agvTask.block_index = blockIdx;
     agvTask.job_id = block.job;
     agvTask.operation_id = block.opera;
-    agvTask.start_time = block.start;
-    agvTask.end_time = block.end;
+    agvTask.start_time = require_scalar_time(block.start, ...
+        agvIdx, blockIdx, 'start');
+    agvTask.end_time = require_scalar_time(block.end, ...
+        agvIdx, blockIdx, 'end');
     agvTasks(end + 1) = agvTask;
+end
+end
+
+function value = require_scalar_time(value, agvIdx, blockIdx, fieldName)
+if isempty(value) || ~isnumeric(value) || ~isscalar(value)
+    error('check_agv_table_feasibility:InvalidTimeValue', ...
+        'AGVTable{%d} block %d field %s must be a numeric scalar.', ...
+        agvIdx, blockIdx, fieldName);
 end
 end
 

@@ -203,10 +203,13 @@ outputs/        生成的输出和日志，不提交 Git
 | [项目目标与分阶段工作流](docs/00_system_overview/project_goal_workflow.md) | 项目结束目标、阶段 A-F、小目标验收标准、scope 和 token 控制 |
 | [源代码迁移导读](docs/00_system_overview/source_code_migration_map.md) | 从原 `codex-AGV` 迁移了哪些源码，以及各层在订单取消项目中的用途 |
 | [基线调用链导读](docs/00_system_overview/baseline_call_chain_map.md) | 正常调度入口、配置、数据读取、编码、解码、AGV、评价和搜索链路 |
+| [阶段 A 工作记录](docs/00_system_overview/stage_a_work_record.md) | 源码迁移、基线理解、正常调度调用链、阶段 A 验收和阶段 B 入口说明 |
 | [订单取消状态分类契约](docs/00_system_overview/order_cancellation_state_contract.md) | 阶段 B 的已完成、正在加工、尚未开工分类规则和边界条件 |
 | [阶段 B 工作记录](docs/00_system_overview/stage_b_work_record.md) | 订单取消事件、状态提取、测试入口、smoke 结果和阶段 B 验收记录 |
 | [阶段 C 局部修复输入契约](docs/00_system_overview/stage_c_local_repair_contract.md) | 局部修复的输入、支持策略、拒绝条件和禁止行为 |
 | [阶段 C 工作记录](docs/00_system_overview/stage_c_work_record.md) | 局部修复候选、删除式修复、可行性检查、测试入口和 smoke 结果 |
+| [阶段 D 完全重调度输入与输出契约](docs/00_system_overview/stage_d_complete_rescheduling_contract.md) | 完全重调度候选的输入、输出、冻结任务、重调度任务、排除规则和拒绝条件 |
+| [阶段 D 工作记录](docs/00_system_overview/stage_d_work_record.md) | 完全重调度候选、independent 解码复用、新增文件、测试入口和阶段 E 入口说明 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
 | [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
 
