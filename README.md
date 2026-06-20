@@ -210,6 +210,10 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 C 工作记录](docs/00_system_overview/stage_c_work_record.md) | 局部修复候选、删除式修复、可行性检查、测试入口和 smoke 结果 |
 | [阶段 D 完全重调度输入与输出契约](docs/00_system_overview/stage_d_complete_rescheduling_contract.md) | 完全重调度候选的输入、输出、冻结任务、重调度任务、排除规则和拒绝条件 |
 | [阶段 D 工作记录](docs/00_system_overview/stage_d_work_record.md) | 完全重调度候选、independent 解码复用、新增文件、测试入口和阶段 E 入口说明 |
+| [阶段 E 评价与策略选择输入契约](docs/00_system_overview/stage_e_evaluation_contract.md) | 阶段 E 的输入、候选来源、前置可行性、baseline 和禁止行为 |
+| [阶段 E 工作记录](docs/00_system_overview/stage_e_work_record.md) | 阶段 E 指标定义、Y、策略选择、新增文件、测试入口、outputs 含义和阶段 F 入口说明 |
+| [阶段 F 小规模实验工作计划](docs/00_system_overview/stage_f_work_plan.md) | 阶段 F 的早期/中期/后期取消场景、多随机种子、小规模实验输出和验收标准 |
+| [阶段 F 之后灵活调度路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 阶段 G-N 的后续扩展路线，说明如何从第一版闭环走向灵活订单取消调度 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
 | [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
 
@@ -231,7 +235,7 @@ outputs/        生成的输出和日志，不提交 Git
 当前项目状态：
 
 ```text
-阶段 A 已开始。
-原 codex-AGV 源码结构已迁移。
-订单取消算法尚未实现。
+阶段 A-E 已形成第一版静态文档、候选生成、评价和策略选择链路。
+阶段 E 已在 Mk01 小样例 smoke 中跑通评价与策略选择。
+下一步进入阶段 F：早期/中期/后期取消的小规模实验。
 ```
