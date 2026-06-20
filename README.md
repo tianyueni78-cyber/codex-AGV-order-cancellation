@@ -203,6 +203,8 @@ outputs/        生成的输出和日志，不提交 Git
 | [项目目标与分阶段工作流](docs/00_system_overview/project_goal_workflow.md) | 项目结束目标、阶段 A-F、小目标验收标准、scope 和 token 控制 |
 | [源代码迁移导读](docs/00_system_overview/source_code_migration_map.md) | 从原 `codex-AGV` 迁移了哪些源码，以及各层在订单取消项目中的用途 |
 | [基线调用链导读](docs/00_system_overview/baseline_call_chain_map.md) | 正常调度入口、配置、数据读取、编码、解码、AGV、评价和搜索链路 |
+| [订单取消状态分类契约](docs/00_system_overview/order_cancellation_state_contract.md) | 阶段 B 的已完成、正在加工、尚未开工分类规则和边界条件 |
+| [阶段 B 工作记录](docs/00_system_overview/stage_b_work_record.md) | 订单取消事件、状态提取、测试入口、smoke 结果和阶段 B 验收记录 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
 | [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
 
