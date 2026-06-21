@@ -95,15 +95,6 @@ cancel_unstarted_operations_only
 5. `cancel_time` 必须非负。
 6. `policy` 当前只允许 `cancel_unstarted_operations_only`。
 
-Step I2 完成时应满足：
-
-- 已明确 `cancelEvents(i).event_id`、`job_id`、`cancel_time` 和 `policy` 四个字段。
-- 已明确至少支持 2 个连续取消事件。
-- 已明确事件按 `cancel_time` 升序处理。
-- 已明确相同 `job_id` 重复取消要拒绝或标记为无效。
-- 已明确 `cancel_time` 非负。
-- 已明确 `policy` 当前只支持 `cancel_unstarted_operations_only`。
-
 ## 5. 基线更新规则
 
 阶段 I 的关键规则是基线回放：
@@ -132,7 +123,47 @@ Step I2 完成时应满足：
 
 如果连续事件中出现正在加工工序或正在运输任务取消，第一版只记录为 `unsupported`。
 
-## 7. Step I1 验收标准
+## 7. Step I3：校验连续取消事件
+
+阶段 I 新增连续取消事件校验函数：
+
+```text
+src/cancellation/validate_sequential_cancellation_events.m
+```
+
+建议调用方式：
+
+```matlab
+[isValid, sortedEvents, report] = ...
+    validate_sequential_cancellation_events(cancelEvents, problem)
+```
+
+校验职责：
+
+- 检查 `cancelEvents` 是结构体数组。
+- 检查事件数量至少为 2。
+- 检查每个事件包含 `event_id`、`job_id`、`cancel_time` 和 `policy`。
+- 复用单事件校验逻辑，拒绝非法 `job_id`、非法 `cancel_time` 和未知 `policy`。
+- 按 `cancel_time` 升序稳定排序；相同 `cancel_time` 保留输入顺序。
+- 重复取消同一 `job_id` 在第一版中直接拒绝，并在 `report.unsupported_events` 中记录原因。
+
+测试入口：
+
+```matlab
+run('tests/test_order_cancellation_sequential_event_validation.m')
+```
+
+该测试只验证事件校验和排序逻辑，不写 `outputs/`，不运行完整调度实验。
+
+Step I3 完成时应满足：
+
+- 非法 `job_id` 被拒绝。
+- 非法 `cancel_time` 被拒绝。
+- 未知 `policy` 被拒绝。
+- 重复取消同一订单被拒绝并记录为 unsupported。
+- 事件排序稳定可复现。
+
+## 8. Step I1 验收标准
 
 Step I1 完成时应满足：
 
@@ -143,14 +174,24 @@ Step I1 完成时应满足：
 - 明确后续轮次使用上一轮最终选择计划作为新基线。
 - 明确阶段 I 不新增机器故障、新订单插入或强化学习。
 
-## 8. 后续步骤入口
+## 9. Step I2 验收标准
 
-下一步进入 Step I3：校验连续取消事件。
+Step I2 完成时应满足：
+
+- 已明确 `cancelEvents(i).event_id`、`job_id`、`cancel_time` 和 `policy` 四个字段。
+- 已明确至少支持 2 个连续取消事件。
+- 已明确事件按 `cancel_time` 升序处理。
+- 已明确相同 `job_id` 重复取消要拒绝或标记为无效。
+- 已明确 `cancel_time` 非负。
+- 已明确 `policy` 当前只支持 `cancel_unstarted_operations_only`。
+
+## 10. 后续步骤入口
+
+下一步进入 Step I4：实现连续取消主流程函数。
 
 建议重点确认：
 
-- 非法 `job_id` 如何拒绝。
-- 非法 `cancel_time` 如何拒绝。
-- 未知 `policy` 如何拒绝。
-- 重复取消同一 `job_id` 是直接报错，还是作为无效事件写入报告。
+- 主流程如何把 `sortedEvents` 逐个送入阶段 B-H。
+- 每轮最终计划如何更新为下一轮 `currentSchedule`。
+- 每轮结果结构需要记录哪些字段。
 - unsupported 后是停止后续事件，还是继续尝试处理后续事件。
