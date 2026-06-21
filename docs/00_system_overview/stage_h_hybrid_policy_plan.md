@@ -511,6 +511,38 @@ tests/test_order_cancellation_hybrid_policy.m
 2. 测试不跑 NSGA-II。
 3. 测试只构造最小候选和评价结果。
 
+H6 实现结果：
+
+已新增：
+
+```text
+tests/test_order_cancellation_hybrid_policy.m
+```
+
+测试入口：
+
+```matlab
+run('tests/test_order_cancellation_hybrid_policy.m')
+```
+
+测试覆盖：
+
+1. 局部修复可行且稳定，选择 `local_repair`，原因 `local_stable_enough`。
+2. 局部修复不可行、完全重调度可行，选择 `complete_rescheduling`，原因 `local_infeasible_trigger_complete`。
+3. 两个候选都可行，完全重调度 `Y` 更小，选择 `complete_rescheduling`，原因 `complete_better_Y`。
+4. 两个候选都可行，局部修复 `Y` 更小，选择 `local_repair`，原因 `local_better_Y`。
+5. 两个候选都可行且 `Y` 相同，选择 `local_repair`，原因 `tie_break_local`。
+6. 两个候选都不可行，拒绝选择，原因 `both_infeasible`。
+7. 修改 `config.hybrid_policy.cmax_delta_threshold` 会改变阈值触发结果。
+8. 完全重调度被触发但不可行时，回退选择可行的局部修复，原因 `complete_triggered_but_infeasible`。
+
+H6 静态验收：
+
+1. 测试只构造最小候选和评价结果。
+2. 测试不写 `outputs/`。
+3. 测试不调用 NSGA-II。
+4. 测试入口已写入本文档。
+
 ### Step H7：样例 smoke
 
 目标：在阶段 G 的 Mk01 场景库结果基础上验证混合策略能跑通。
