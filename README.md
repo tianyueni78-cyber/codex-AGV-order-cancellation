@@ -101,6 +101,20 @@ Y          = omega1*Cmax_delta + omega2*SD + omega3*TD
 
 ## 5. 工作计划
 
+### 长期阶段定位
+
+本项目不是平行展开多个互不相关的方向，而是从第一版可运行闭环逐步扩展到更完整的订单取消处理方法：
+
+```text
+A-G：做出第一版可运行闭环。
+H-K：把处理方式变成更智能、更通用的算法规则。
+L：验证这个规则是否稳定。
+M：预留多扰动扩展。
+N：整理成最终算法结论和复现材料。
+```
+
+其中，A-G 解决“能不能跑通订单取消处理链路”，H-K 开始形成更明确的算法决策规则，L 负责验证规则稳定性，M 负责扩展接口，N 负责最终论文级整理。
+
 ### 阶段 A：源码迁移与基线理解
 
 目标：保留原正常调度基线，并识别正常调度调用链。
@@ -208,6 +222,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 E：评价与策略选择](docs/00_system_overview/stage_e_work_record.md) | Cmax_delta、SD、TD、能耗、Y、策略选择、outputs 含义和 smoke 结果 |
 | [阶段 F：小规模实验项目报告](docs/00_system_overview/stage_f_project_report.md) | 早期/中期/后期取消实验、汇总指标、结论、局限和后续建议 |
 | [阶段 G：场景库项目报告](docs/00_system_overview/stage_g_project_report.md) | 场景库配置、批量实验、真实输出、汇总结果、结论和阶段 H 入口 |
+| [阶段 H：混合修复策略计划](docs/00_system_overview/stage_h_hybrid_policy_plan.md) | 局部修复与完全重调度之间的触发规则、配置、输出原因、测试和验收计划 |
 | [阶段 G-N 后续路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 从第一版闭环走向更灵活订单取消调度的后续阶段 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 仓库目录和关键文件用途说明 |
 
