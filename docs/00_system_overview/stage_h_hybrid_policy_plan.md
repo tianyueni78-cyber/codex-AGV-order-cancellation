@@ -346,6 +346,48 @@ src/cancellation/select_hybrid_cancellation_policy.m
 3. 能处理两个候选都不可行。
 4. 输出选择原因。
 
+H4 实现结果：
+
+已新增：
+
+```text
+src/cancellation/select_hybrid_cancellation_policy.m
+```
+
+函数职责：
+
+1. 只读取阶段 C/D 已生成的候选和阶段 E 已生成的评价结果。
+2. 不重新提取取消状态。
+3. 不重新构造局部修复候选。
+4. 不重新构造完全重调度候选。
+5. 不重新计算 `Cmax_delta`、`SD`、`TD`、能耗或 `Y`。
+6. 不写 `outputs/`。
+
+当前支持的选择原因：
+
+```text
+local_stable_enough
+local_infeasible_trigger_complete
+threshold_trigger_complete
+complete_better_Y
+local_better_Y
+tie_break_local
+both_infeasible
+complete_triggered_but_infeasible
+missing_required_input
+unsupported_config
+```
+
+H4 静态验收：
+
+1. 已实现局部修复可行、完全重调度可行时的 `Y` 选择。
+2. 已实现局部修复不可行、完全重调度可行时选择完全重调度。
+3. 已实现两个候选都不可行时拒绝选择。
+4. 已实现选择原因输出到 `decision.reason`。
+5. 已实现 `decision.triggered_complete_rescheduling`。
+6. 已保留两个候选的评价结果。
+7. 已从 `config.hybrid_policy` 读取阈值和开关，并提供带记录的默认配置。
+
 ### Step H5：补充阈值指标
 
 目标：确认 `Cmax_delta`、能耗和空闲浪费怎么进入触发规则。
