@@ -58,21 +58,25 @@ result = run_sequential_order_cancellations( ...
 
 后续轮次使用上一轮最终选择的候选计划作为新基线。
 
-## 4. cancelEvents 契约
+## 4. Step I2：连续取消事件列表结构
 
-`cancelEvents` 必须包含多个取消事件。每个事件至少包含：
+`cancelEvents` 用于统一描述多个按时间发生的订单取消事件。每个事件必须包含：
 
 ```matlab
+cancelEvents(i).event_id
 cancelEvents(i).job_id
 cancelEvents(i).cancel_time
 cancelEvents(i).policy
 ```
 
-后续实现时建议补充：
+字段含义：
 
-```matlab
-cancelEvents(i).event_id
-```
+| 字段 | 含义 | 第一版要求 |
+|---|---|---|
+| `event_id` | 连续取消事件编号 | 用于追踪第几次取消，建议唯一 |
+| `job_id` | 被取消订单编号 | 必须是有效工件编号 |
+| `cancel_time` | 取消发生时刻 | 必须非负 |
+| `policy` | 取消处理策略 | 当前只支持 `cancel_unstarted_operations_only` |
 
 当前第一版只支持：
 
@@ -81,6 +85,24 @@ cancel_unstarted_operations_only
 ```
 
 也就是只取消尚未开工的工序。若连续取消过程中出现正在加工任务取消，先记录为 `unsupported`，不扩展抢占或中断加工逻辑。
+
+事件列表规则：
+
+1. `cancelEvents` 至少包含 2 个取消事件。
+2. 主流程需要按 `cancel_time` 升序处理事件。
+3. 如果输入时不是升序，后续实现应在主函数或校验函数中稳定排序。
+4. 相同 `job_id` 重复取消应拒绝，或标记为无效事件。
+5. `cancel_time` 必须非负。
+6. `policy` 当前只允许 `cancel_unstarted_operations_only`。
+
+Step I2 完成时应满足：
+
+- 已明确 `cancelEvents(i).event_id`、`job_id`、`cancel_time` 和 `policy` 四个字段。
+- 已明确至少支持 2 个连续取消事件。
+- 已明确事件按 `cancel_time` 升序处理。
+- 已明确相同 `job_id` 重复取消要拒绝或标记为无效。
+- 已明确 `cancel_time` 非负。
+- 已明确 `policy` 当前只支持 `cancel_unstarted_operations_only`。
 
 ## 5. 基线更新规则
 
@@ -123,11 +145,12 @@ Step I1 完成时应满足：
 
 ## 8. 后续步骤入口
 
-下一步进入 Step I2：定义连续取消事件列表结构。
+下一步进入 Step I3：校验连续取消事件。
 
 建议重点确认：
 
-- 是否给每个事件增加 `event_id`。
-- 是否拒绝重复取消同一 `job_id`。
-- 是否要求 `cancelEvents` 输入时已经有序，还是在主函数中排序。
+- 非法 `job_id` 如何拒绝。
+- 非法 `cancel_time` 如何拒绝。
+- 未知 `policy` 如何拒绝。
+- 重复取消同一 `job_id` 是直接报错，还是作为无效事件写入报告。
 - unsupported 后是停止后续事件，还是继续尝试处理后续事件。
