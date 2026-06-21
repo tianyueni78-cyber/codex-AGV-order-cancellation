@@ -206,7 +206,19 @@ run('scripts/run_order_cancellation_hybrid_policy_smoke.m')
 5. 阶段 H 不是全局最优证明，只是可运行闭环上的第一版策略规则。
 6. smoke 仍基于小样例，不能直接当作论文级结论。
 
-## 11. 阶段 H 完成标志
+## 11. 阶段 H 验收标准
+
+阶段 H 完成时应满足：
+
+- 能处理局部修复可行、完全重调度可行的情况。
+- 能处理局部修复不可行、完全重调度可行的情况。
+- 能处理两个候选都不可行的情况。
+- 触发规则来自 `config`，不写死在函数里。
+- 输出选择原因，例如 `local_stable_enough`、`complete_better_Y`、`local_infeasible_trigger_complete`。
+- 缺少实验依据的阈值已标记为待阶段 L 验证。
+- 不加入机器故障、新订单插入、连续取消或强化学习。
+
+## 12. 阶段 H 完成标志
 
 阶段 H 的完成标志是：
 
@@ -220,7 +232,7 @@ run('scripts/run_order_cancellation_hybrid_policy_smoke.m')
 
 阶段 H 的算法结论仍需要后续阶段 L 做稳定性验证。
 
-## 12. 阶段 I 入口
+## 13. 阶段 I 入口
 
 阶段 I 建议进入“多订单连续取消”：
 
