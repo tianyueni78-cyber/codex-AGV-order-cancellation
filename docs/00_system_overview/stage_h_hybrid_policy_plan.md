@@ -174,6 +174,62 @@ H1 静态验收：
 3. 缺少实验依据的阈值标记为待阶段 L 验证。
 4. 函数内部不写死业务阈值。
 
+H2 配置契约：
+
+第一版混合策略配置统一放在：
+
+```matlab
+config.hybrid_policy
+```
+
+建议最小字段：
+
+```matlab
+config.hybrid_policy.enable_complete_if_local_infeasible
+config.hybrid_policy.use_stage_e_y_selection
+config.hybrid_policy.cmax_delta_threshold
+config.hybrid_policy.energy_delta_threshold
+config.hybrid_policy.idle_waste_threshold
+config.hybrid_policy.threshold_validation_status
+```
+
+建议默认值：
+
+```matlab
+config.hybrid_policy.enable_complete_if_local_infeasible = true;
+config.hybrid_policy.use_stage_e_y_selection = true;
+config.hybrid_policy.cmax_delta_threshold = 0;
+config.hybrid_policy.energy_delta_threshold = 0;
+config.hybrid_policy.idle_waste_threshold = Inf;
+config.hybrid_policy.threshold_validation_status = 'pending_stage_l_validation';
+```
+
+默认值解释：
+
+1. `enable_complete_if_local_infeasible = true`：局部修复不可行时允许尝试完全重调度。
+2. `use_stage_e_y_selection = true`：两个候选都可行时继续复用阶段 E 的 `Y` 选择规则。
+3. `cmax_delta_threshold = 0`：局部修复只要让 `Cmax_delta` 变差到正值，就可以触发完全重调度评估。
+4. `energy_delta_threshold = 0`：局部修复只要让能耗变化变差到正值，就可以触发完全重调度评估。
+5. `idle_waste_threshold = Inf`：空闲浪费第一版先不作为强制触发项，只保留接口，避免用没有验证的口径影响策略。
+6. `threshold_validation_status = 'pending_stage_l_validation'`：明确这些阈值目前是可解释默认值，不是统计验证后的最优阈值。
+
+H2 实现边界：
+
+1. H2 暂不新增 yaml 配置文件。
+2. H2 建议先在 `tests/test_order_cancellation_hybrid_policy.m` 中构造最小 `config`。
+3. 后续如果 H6 单元测试稳定，再考虑把 `config.hybrid_policy` 落到正式配置文件。
+4. `select_hybrid_cancellation_policy.m` 内部不得写死上述业务阈值。
+5. 如果缺少某个配置字段，后续实现应使用一个明确的默认配置构造函数或本地默认合并逻辑，并在 report 中记录默认来源。
+
+H2 静态验收：
+
+1. 已定义 `config.hybrid_policy` 作为混合策略配置入口。
+2. 已定义局部修复不可行触发完全重调度的开关。
+3. 已定义 `Cmax_delta`、能耗和空闲浪费阈值字段。
+4. 已说明默认阈值含义。
+5. 已标记阈值需要阶段 L 验证。
+6. H2 只更新文档，不新增源码、不新增测试、不运行 MATLAB、不生成 `outputs/`。
+
 ### Step H3：定义输出与原因枚举
 
 目标：统一 `decision` 结构和 `reason` 取值。
