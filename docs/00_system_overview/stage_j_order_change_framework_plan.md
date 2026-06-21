@@ -179,3 +179,65 @@ cancel.policy
 | 原有取消测试不回退 | 通过，Step J3 未修改订单取消算法逻辑；后续 Step J8 再补统一事件接口测试 |
 
 Step J3 完成标志：现有订单取消事件已经可以映射为统一 `cancel_order` 事件，也可以从统一事件恢复为阶段 B-I 使用的旧 `cancel` 结构。后续可以进入 Step J4：预留新订单插入事件结构。
+
+## 7. Step J4：预留新订单插入事件结构
+
+Step J4 新增插单事件接口：
+
+```text
+src/events/insert_order_to_schedule_change_event.m
+```
+
+该函数只创建统一事件，不修改 `problem`，不生成新调度，也不实现完整插单算法。
+
+插单统一事件结构为：
+
+```matlab
+event.event_type = 'insert_order'
+event.event_time = insertTime
+event.policy = policy
+event.payload.new_job = newJob
+```
+
+第一版预留的 `new_job` 字段：
+
+```matlab
+new_job.job_id
+new_job.operations
+new_job.processing_times
+new_job.machine_options
+new_job.due_date
+```
+
+使用方式：
+
+```matlab
+event = insert_order_to_schedule_change_event(newJob, insertTime, eventId);
+```
+
+默认 `policy` 为：
+
+```text
+insert_order_interface_only
+```
+
+这表示阶段 J 只承认“发生了一个插单事件”，并保留后续插单算法所需的最小信息。真正把 `new_job` 合并进 `problem`、更新编码长度、更新解码约束、处理新工件运输任务和重新评价候选计划，需要后续阶段单独完成。
+
+插单与取消的主要差异：
+
+- 订单取消是从未完成任务集合中删除任务。
+- 新订单插入是向任务集合中增加新工件。
+- 插单通常需要扩展 `problem` 数据结构，包括工件数、工序数、可选机器、加工时间和可能的交期字段。
+- 插单还可能影响编码长度、初始化种群、解码器和评价函数，因此阶段 J 不进入完整插单解码实现。
+
+## 8. Step J4 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 能创建 `insert_order` 事件 | 通过，`insert_order_to_schedule_change_event.m` 创建 `event_type = 'insert_order'` |
+| 能校验基本字段 | 通过，函数检查 `new_job.job_id`、`operations`、`processing_times`、`machine_options` 和 `due_date` |
+| 文档说明插单需要扩展 `problem` | 通过，本节说明插单会影响问题结构、编码和解码 |
+| 阶段 J 暂不进入解码实现 | 通过，函数只创建事件，不修改 `problem`，不生成调度 |
+| 不影响订单取消主线 | 通过，新增函数位于 `src/events/`，未修改阶段 B-I 取消链路 |
+
+Step J4 完成标志：新订单插入已经有统一事件接口预留，但完整插单算法仍未展开。后续可以进入 Step J5：实现统一事件校验函数。
