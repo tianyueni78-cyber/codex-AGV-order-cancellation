@@ -237,7 +237,60 @@ Step I5 完成时应满足：
 - 后续 baseline 中不能重新出现已取消订单的未完成任务。
 - 如果发现回流，当前事件结果标记为不可行。
 
-## 10. Step I1 验收标准
+## 10. Step I6：连续取消后的约束检查
+
+阶段 I 每轮事件都会显式记录候选和最终选择计划的约束检查结果。
+
+复用函数：
+
+```text
+check_machine_table_feasibility.m
+check_agv_table_feasibility.m
+check_job_operation_sequence.m
+check_complete_rescheduling_candidate.m
+```
+
+局部修复候选约束记录：
+
+```text
+eventResult.local_machine_check_isFeasible
+eventResult.local_agv_check_isFeasible
+eventResult.local_job_sequence_check_isFeasible
+```
+
+完全重调度候选约束记录：
+
+```text
+eventResult.complete_machine_check_isFeasible
+eventResult.complete_agv_check_isFeasible
+eventResult.complete_job_sequence_check_isFeasible
+eventResult.complete_frozen_consistency_isFeasible
+eventResult.complete_cancelled_task_exclusion_isFeasible
+```
+
+最终选择计划约束记录：
+
+```text
+eventResult.selected_machine_check_isFeasible
+eventResult.selected_agv_check_isFeasible
+eventResult.selected_job_sequence_check_isFeasible
+eventResult.selected_constraint_check_isFeasible
+```
+
+如果最终选择计划没有通过机器、AGV 或工序顺序检查，本轮事件会被标记为不可行，`decision_reason` 记为：
+
+```text
+selected_constraint_check_failed
+```
+
+Step I6 完成时应满足：
+
+- 每轮局部修复候选报告机器冲突、AGV 冲突和工序顺序检查。
+- 每轮完全重调度候选报告冻结一致性和取消任务排除检查。
+- 最终选择计划也要通过机器、AGV 和工序顺序检查。
+- 不可行时记录 `reason`，不静默跳过。
+
+## 11. Step I1 验收标准
 
 Step I1 完成时应满足：
 
@@ -248,7 +301,7 @@ Step I1 完成时应满足：
 - 明确后续轮次使用上一轮最终选择计划作为新基线。
 - 明确阶段 I 不新增机器故障、新订单插入或强化学习。
 
-## 11. Step I2 验收标准
+## 12. Step I2 验收标准
 
 Step I2 完成时应满足：
 
@@ -259,13 +312,13 @@ Step I2 完成时应满足：
 - 已明确 `cancel_time` 非负。
 - 已明确 `policy` 当前只支持 `cancel_unstarted_operations_only`。
 
-## 12. 后续步骤入口
+## 13. 后续步骤入口
 
-下一步进入 Step I6：连续取消后的约束检查。
+下一步进入 Step I7：unsupported 情况处理。
 
 建议重点确认：
 
-- 每轮最终选择计划是否都需要单独复用机器、AGV、工序顺序检查。
-- 完全重调度候选是否需要额外记录冻结一致性和取消任务排除检查。
-- 不可行事件后是否停止后续事件，还是在配置中允许继续尝试。
+- `state.has_unsupported_operations` 为 true 时是否立即停止后续事件。
+- `state.has_unsupported_agv_tasks` 为 true 时是否立即停止后续事件。
+- config 中 unsupported 后续行为字段如何命名。
 - unsupported 后是停止后续事件，还是继续尝试处理后续事件。

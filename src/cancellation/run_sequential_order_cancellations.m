@@ -127,6 +127,26 @@ elseif decision.isSelected
         eventResult.decision_isSelected = false;
         eventResult.selected_strategy = '';
         eventResult.decision_reason = 'cancelled_job_backflow_detected';
+    else
+        selectedConstraintReport = check_selected_schedule_constraints( ...
+            problem, nextSchedule, cancel);
+        eventResult.selected_machine_check_isFeasible = ...
+            selectedConstraintReport.machineConflictCheck.isFeasible;
+        eventResult.selected_agv_check_isFeasible = ...
+            selectedConstraintReport.agvConflictCheck.isFeasible;
+        eventResult.selected_job_sequence_check_isFeasible = ...
+            selectedConstraintReport.jobSequenceCheck.isFeasible;
+        eventResult.selected_constraint_check_isFeasible = ...
+            selectedConstraintReport.isFeasible;
+        eventResult.details.selectedConstraintReport = ...
+            selectedConstraintReport;
+        if ~selectedConstraintReport.isFeasible
+            nextSchedule = currentSchedule;
+            eventResult.decision_isSelected = false;
+            eventResult.selected_strategy = '';
+            eventResult.decision_reason = ...
+                'selected_constraint_check_failed';
+        end
     end
 end
 end
@@ -158,6 +178,18 @@ eventResult.state_has_unsupported_operations = false;
 eventResult.state_has_unsupported_agv_tasks = false;
 eventResult.local_candidate_isFeasible = false;
 eventResult.complete_candidate_isFeasible = false;
+eventResult.local_machine_check_isFeasible = false;
+eventResult.local_agv_check_isFeasible = false;
+eventResult.local_job_sequence_check_isFeasible = false;
+eventResult.complete_machine_check_isFeasible = false;
+eventResult.complete_agv_check_isFeasible = false;
+eventResult.complete_job_sequence_check_isFeasible = false;
+eventResult.complete_frozen_consistency_isFeasible = false;
+eventResult.complete_cancelled_task_exclusion_isFeasible = false;
+eventResult.selected_machine_check_isFeasible = false;
+eventResult.selected_agv_check_isFeasible = false;
+eventResult.selected_job_sequence_check_isFeasible = false;
+eventResult.selected_constraint_check_isFeasible = false;
 eventResult.local_evaluation_isFeasible = false;
 eventResult.complete_evaluation_isFeasible = false;
 eventResult.decision_isSelected = false;
@@ -198,6 +230,28 @@ eventResult.state_has_unsupported_operations = ...
 eventResult.state_has_unsupported_agv_tasks = state.has_unsupported_agv_tasks;
 eventResult.local_candidate_isFeasible = localCandidate.isFeasible;
 eventResult.complete_candidate_isFeasible = completeCandidate.isFeasible;
+eventResult.local_machine_check_isFeasible = get_report_check_feasibility( ...
+    localCandidate.report, 'machineConflictCheck');
+eventResult.local_agv_check_isFeasible = get_report_check_feasibility( ...
+    localCandidate.report, 'agvConflictCheck');
+eventResult.local_job_sequence_check_isFeasible = ...
+    get_report_check_feasibility(localCandidate.report, 'jobSequenceCheck');
+completeFeasibilityReport = get_complete_feasibility_report( ...
+    completeCandidate);
+eventResult.complete_machine_check_isFeasible = ...
+    get_report_check_feasibility( ...
+    completeFeasibilityReport, 'machineConflictCheck');
+eventResult.complete_agv_check_isFeasible = get_report_check_feasibility( ...
+    completeFeasibilityReport, 'agvConflictCheck');
+eventResult.complete_job_sequence_check_isFeasible = ...
+    get_report_check_feasibility( ...
+    completeFeasibilityReport, 'jobSequenceCheck');
+eventResult.complete_frozen_consistency_isFeasible = ...
+    get_report_check_feasibility( ...
+    completeFeasibilityReport, 'frozenConsistencyCheck');
+eventResult.complete_cancelled_task_exclusion_isFeasible = ...
+    get_report_check_feasibility( ...
+    completeFeasibilityReport, 'cancelledTaskExclusionCheck');
 eventResult.local_evaluation_isFeasible = localEvaluation.metrics.isFeasible;
 eventResult.complete_evaluation_isFeasible = ...
     completeEvaluation.metrics.isFeasible;
@@ -217,12 +271,62 @@ eventResult.details = struct();
 eventResult.details.state = state;
 eventResult.details.localCandidate = localCandidate;
 eventResult.details.completeCandidate = completeCandidate;
+eventResult.details.completeFeasibilityReport = completeFeasibilityReport;
 eventResult.details.localEvaluation = localEvaluation;
 eventResult.details.completeEvaluation = completeEvaluation;
 eventResult.details.decision = decision;
 eventResult.details.cancelledEventsBeforeEvent = cancelledRecords;
 eventResult.details.localBackflowReport = localBackflowReport;
 eventResult.details.completeBackflowReport = completeBackflowReport;
+end
+
+function report = get_complete_feasibility_report(candidate)
+report = struct();
+if isfield(candidate, 'report') && isstruct(candidate.report) && ...
+        isfield(candidate.report, 'completeFeasibilityCheck')
+    report = candidate.report.completeFeasibilityCheck;
+end
+end
+
+function value = get_report_check_feasibility(report, fieldName)
+value = false;
+if isstruct(report) && isfield(report, fieldName) && ...
+        isstruct(report.(fieldName)) && ...
+        isfield(report.(fieldName), 'isFeasible')
+    value = report.(fieldName).isFeasible;
+end
+end
+
+function report = check_selected_schedule_constraints(problem, schedule, cancel)
+report = struct();
+[report.machineConflictCheck.isFeasible, ...
+    report.machineConflictCheck] = check_machine_table_feasibility( ...
+    schedule.machineTable);
+[report.agvConflictCheck.isFeasible, ...
+    report.agvConflictCheck] = check_agv_table_feasibility( ...
+    schedule.AGVTable);
+[report.jobSequenceCheck.isFeasible, ...
+    report.jobSequenceCheck] = check_job_operation_sequence( ...
+    problem, schedule.machineTable, cancel);
+report.errors = {};
+report.errors = append_constraint_errors( ...
+    report.errors, report.machineConflictCheck, 'machineConflictCheck');
+report.errors = append_constraint_errors( ...
+    report.errors, report.agvConflictCheck, 'agvConflictCheck');
+report.errors = append_constraint_errors( ...
+    report.errors, report.jobSequenceCheck, 'jobSequenceCheck');
+report.isFeasible = isempty(report.errors);
+end
+
+function errors = append_constraint_errors(errors, checkReport, label)
+if ~isfield(checkReport, 'errors')
+    return
+end
+
+for i = 1:numel(checkReport.errors)
+    errors{end + 1} = sprintf('%s: %s', label, ...
+        checkReport.errors{i});
+end
 end
 
 function [candidate, backflowReport] = reject_backflow_candidate( ...
