@@ -404,6 +404,90 @@ H4 静态验收：
 2. 空闲浪费口径写清楚。
 3. 如果空闲浪费难以稳定计算，先不作为强制触发项，只保留接口。
 
+H5 指标口径：
+
+1. `Cmax_delta` 直接读取阶段 E 评价结果：
+
+   ```matlab
+   localRepairEvaluation.metrics.Cmax_delta
+   ```
+
+   阈值字段：
+
+   ```matlab
+   config.hybrid_policy.cmax_delta_threshold
+   ```
+
+   触发规则：
+
+   ```matlab
+   localRepairEvaluation.metrics.Cmax_delta > ...
+       config.hybrid_policy.cmax_delta_threshold
+   ```
+
+2. 能耗变化直接读取阶段 E 评价结果：
+
+   ```matlab
+   localRepairEvaluation.metrics.energy_delta
+   ```
+
+   阈值字段：
+
+   ```matlab
+   config.hybrid_policy.energy_delta_threshold
+   ```
+
+   触发规则：
+
+   ```matlab
+   localRepairEvaluation.metrics.energy_delta > ...
+       config.hybrid_policy.energy_delta_threshold
+   ```
+
+3. 空闲浪费第一版只保留接口，优先读取：
+
+   ```matlab
+   localRepairEvaluation.metrics.idle_waste
+   ```
+
+   如果评价结果中没有该字段，再尝试读取：
+
+   ```matlab
+   localRepairCandidate.idle_waste
+   ```
+
+   如果两处都没有，则按 `0` 处理。
+
+   阈值字段：
+
+   ```matlab
+   config.hybrid_policy.idle_waste_threshold
+   ```
+
+   第一版默认：
+
+   ```matlab
+   config.hybrid_policy.idle_waste_threshold = Inf
+   ```
+
+   因此空闲浪费不会在第一版中强制触发完全重调度，只在 `decision.threshold_report` 中保留接口和记录位置。
+
+H5 当前实现状态：
+
+1. `select_hybrid_cancellation_policy.m` 已通过 `build_threshold_report` 读取 `Cmax_delta`、`energy_delta` 和 `idle_waste`。
+2. `Cmax_delta` 和 `energy_delta` 复用阶段 E 已有评价结果，不重复计算。
+3. 空闲浪费不重复扫描机器表或 AGV 表，第一版只读取现有字段；没有字段时默认 `0`。
+4. 空闲浪费默认阈值为 `Inf`，因此当前只保留接口，不作为强制触发项。
+5. 三类触发结果写入 `decision.threshold_report.cmax_delta_triggered`、`energy_delta_triggered`、`idle_waste_triggered` 和 `any_triggered`。
+
+H5 静态验收：
+
+1. 已确认 `Cmax_delta` 复用阶段 E 指标。
+2. 已确认能耗变化复用阶段 E 的 `energy_delta`。
+3. 已写清楚空闲浪费第一版口径。
+4. 已说明空闲浪费难以稳定计算时只保留接口。
+5. H5 不新增新的指标计算函数，不运行 MATLAB，不生成 `outputs/`。
+
 ### Step H6：写单元测试
 
 建议新增：
