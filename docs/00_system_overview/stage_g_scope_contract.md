@@ -286,3 +286,53 @@ Step G4 验收状态：
 ```text
 Step G5：实现 job 分类规则
 ```
+
+## 11. Step G5：job 分类规则
+
+job 分类规则已在以下函数中实现：
+
+```text
+src/cancellation/build_order_cancellation_scenarios.m
+```
+
+第一版规则：
+
+1. `random`：使用 `rng(seed)` 可复现随机选择 `job_id`，选择后恢复原随机数状态。
+2. `short`：选择工序数最少的 job；若并列，选择 `job_id` 最小者。
+3. `long`：选择工序数最多的 job；若并列，选择 `job_id` 最小者。
+4. `critical`：选择 `baselineSchedule` 机器表中最后完成的 job；若并列，选择 `job_id` 最小者。
+5. `noncritical`：选择 `baselineSchedule` 机器表中最早完成的 job；若并列，选择 `job_id` 最小者。
+
+停止条件：
+
+```text
+如果无法从 baselineSchedule.machineTable 稳定判断 critical 或 noncritical，
+则跳过对应场景，并把原因写入 summary.skipped.notes。
+不强行伪造关键路径判断。
+```
+
+安全约束：
+
+1. 生成的 `job_id` 必须满足 `1 <= job_id <= problem.jobNum`。
+2. `short` 和 `long` 优先使用 `problem.operaNumVec`，没有时使用 `problem.jobInfo` 的行数。
+3. `critical` 和 `noncritical` 只读取真实机器工序，不读取 `outputs/`。
+4. 函数不运行局部修复、完全重调度或 NSGA-II。
+
+Step G5 验收状态：
+
+1. `random` job 可由 seed 复现。
+2. `short` job 可按最少工序数生成。
+3. `long` job 可按最多工序数生成。
+4. `critical` job 可按最晚完工时间生成，无法判断时跳过并记录原因。
+5. `noncritical` job 可按最早完工时间生成，无法判断时跳过并记录原因。
+6. `job_id` 已做越界检查。
+7. 场景 `notes` 已记录 job 分类选择口径或跳过原因。
+8. 本步骤未运行 MATLAB。
+9. 本步骤未生成 `outputs/`。
+10. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G6：场景库静态测试
+```

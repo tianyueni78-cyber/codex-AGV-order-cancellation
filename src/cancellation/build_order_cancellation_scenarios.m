@@ -180,8 +180,10 @@ switch jobCategory
         notes{end + 1} = sprintf('random job selected with seed %d.', seed);
     case 'short'
         jobId = select_by_operation_count(problem, 'short');
+        notes{end + 1} = 'short job selected by minimum operation count.';
     case 'long'
         jobId = select_by_operation_count(problem, 'long');
+        notes{end + 1} = 'long job selected by maximum operation count.';
     case 'critical'
         [jobId, isSkipped, notes] = select_by_completion_time( ...
             problem, baselineSchedule, 'critical');
@@ -256,9 +258,13 @@ switch mode
     case 'critical'
         targetTime = max(jobCompletionTimes(validJobIds));
         jobId = find(jobCompletionTimes == targetTime, 1, 'first');
+        notes{end + 1} = ...
+            'critical job selected by latest baseline completion time.';
     case 'noncritical'
         targetTime = min(jobCompletionTimes(validJobIds));
         jobId = find(jobCompletionTimes == targetTime, 1, 'first');
+        notes{end + 1} = ...
+            'noncritical job selected by earliest baseline completion time.';
     otherwise
         error('build_order_cancellation_scenarios:InvalidCompletionMode', ...
             'Unsupported completion mode.');
