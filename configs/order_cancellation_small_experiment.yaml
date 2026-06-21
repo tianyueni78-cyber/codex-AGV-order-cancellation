@@ -1,0 +1,12 @@
+dataset: data_sample/Mk01.fjs
+cancel_policy: cancel_unstarted_operations_only
+cancel_time_source: baseline_Cmax_ratio
+scenarios:
+  - name: early_cancel
+    cancel_time_ratio: 0.25
+  - name: middle_cancel
+    cancel_time_ratio: 0.50
+  - name: late_cancel
+    cancel_time_ratio: 0.75
+seeds: [1, 2, 3]
+output_base_dir: outputs/order_cancellation_small_experiment

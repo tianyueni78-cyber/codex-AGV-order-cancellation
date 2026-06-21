@@ -111,16 +111,18 @@ experiment_notes.md
 
 目标：把早期、中期、后期取消写成可复现配置。
 
-建议新增：
+已新增：
 
 ```text
 configs/order_cancellation_small_experiment.yaml
 ```
 
-建议字段：
+当前字段：
 
 ```yaml
 dataset: data_sample/Mk01.fjs
+cancel_policy: cancel_unstarted_operations_only
+cancel_time_source: baseline_Cmax_ratio
 scenarios:
   - name: early_cancel
     cancel_time_ratio: 0.25
@@ -128,9 +130,18 @@ scenarios:
     cancel_time_ratio: 0.50
   - name: late_cancel
     cancel_time_ratio: 0.75
-cancel_policy: cancel_unstarted_operations_only
 seeds: [1, 2, 3]
+output_base_dir: outputs/order_cancellation_small_experiment
 ```
+
+字段说明：
+
+1. `dataset` 使用相对路径，不写死本机绝对路径。
+2. `cancel_policy` 延续阶段 B 的 `cancel_unstarted_operations_only`。
+3. `cancel_time_source = baseline_Cmax_ratio` 表示后续脚本用基线 `Cmax` 乘 `cancel_time_ratio` 得到取消时刻。
+4. `scenarios` 包含早期、中期、后期三个取消场景。
+5. `seeds` 明确小规模实验第一版使用 `1, 2, 3` 三个随机种子。
+6. `output_base_dir` 指向阶段 F 输出根目录，后续脚本应在其下创建 `<timestamp>` 子目录。
 
 验收标准：
 
@@ -138,6 +149,15 @@ seeds: [1, 2, 3]
 2. 取消时刻可由基线 `Cmax` 或固定样例时间换算得到。
 3. 多随机种子列表明确。
 4. 配置不写死本机绝对路径。
+
+Step F2 静态验收结果：
+
+1. `configs/order_cancellation_small_experiment.yaml` 已存在。
+2. 已定义 `early_cancel`、`middle_cancel`、`late_cancel` 三个场景。
+3. 已使用 `baseline_Cmax_ratio` 说明取消时刻换算口径。
+4. 已定义随机种子 `[1, 2, 3]`。
+5. 所有路径均为相对路径。
+6. 本步骤未运行 MATLAB，未生成 `outputs/`，未修改 `raw_code/`。
 
 ## 6. Step F3：构造单场景运行函数
 
@@ -340,14 +360,17 @@ docs/00_system_overview/stage_f_work_record.md
 3. 小规模实验脚本存在。
 4. 汇总测试存在。
 5. 输出写入 `outputs/order_cancellation_small_experiment/<timestamp>/`。
-6. 每个场景同时报告局部修复和完全重调度。
-7. 每个场景报告调度约束检查结果。
-8. 多随机种子汇总后才写分析结论。
-9. 没有机器故障逻辑。
-10. 没有新订单插入逻辑。
-11. 没有强化学习。
-12. 没有全局最优证明。
-13. `raw_code/` 无修改。
+6. 输出目录至少包含 `scenario_results.csv`、`seed_results.csv`、`summary.json`、`selected_strategy_counts.csv` 和 `experiment_notes.md`。
+7. 只新增本次 `<timestamp>` 输出目录，不覆盖或改写历史 `outputs/` 结果。
+8. 每个场景同时报告局部修复和完全重调度。
+9. 每个场景报告调度约束检查结果。
+10. 多随机种子汇总后才写分析结论。
+11. 没有机器故障逻辑。
+12. 没有新订单插入逻辑。
+13. 没有多个订单连续取消逻辑。
+14. 没有强化学习。
+15. 没有全局最优证明。
+16. `raw_code/` 无修改。
 
 ## 15. 阶段 F 完成标志
 
