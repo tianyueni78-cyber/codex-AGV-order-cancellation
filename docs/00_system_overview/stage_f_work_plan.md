@@ -294,7 +294,7 @@ Step F4 静态验收结果：
 
 目标：串联多个场景和多个随机种子。
 
-建议新增：
+已新增：
 
 ```text
 scripts/run_order_cancellation_small_experiment.m
@@ -308,6 +308,26 @@ run('scripts/run_order_cancellation_small_experiment.m')
 
 注意：该脚本会写入 `outputs/`，运行 MATLAB 前需要确认。
 
+脚本行为：
+
+1. 读取 `configs/order_cancellation_small_experiment.yaml`。
+2. 读取 `data_sample/Mk01.fjs`。
+3. 构造与阶段 E smoke 一致的小样例 `machineData`、`agvData` 和 `baselineSchedule`。
+4. 遍历 `early_cancel`、`middle_cancel`、`late_cancel`。
+5. 遍历随机种子 `[1, 2, 3]`。
+6. 每次调用 `run_order_cancellation_scenario(...)`。
+7. 在 `outputs/order_cancellation_small_experiment/<timestamp>/` 下写入基础结果。
+
+当前 F5 基础输出：
+
+```text
+seed_results.csv
+selected_strategy_counts.csv
+run_summary.txt
+```
+
+说明：`scenario_results.csv`、`summary.json` 和 `experiment_notes.md` 的完整汇总口径留到 Step F6 继续补齐。
+
 验收标准：
 
 1. 能遍历早期、中期、后期取消。
@@ -315,6 +335,17 @@ run('scripts/run_order_cancellation_small_experiment.m')
 3. 每次运行都记录局部修复和完全重调度指标。
 4. 每次运行都记录最终选择策略。
 5. 不覆盖已有 timestamp 输出目录。
+
+Step F5 静态验收结果：
+
+1. `scripts/run_order_cancellation_small_experiment.m` 已存在。
+2. 脚本读取阶段 F 小规模实验配置。
+3. 脚本遍历早期、中期、后期取消场景。
+4. 脚本遍历配置中的多个随机种子。
+5. 脚本每次运行调用阶段 F3 单场景函数，并记录局部修复和完全重调度指标。
+6. 脚本每次运行记录最终选择策略。
+7. 脚本使用 timestamp 输出目录，避免覆盖旧结果。
+8. 本步骤未运行 MATLAB，未生成 `outputs/`，未修改 `raw_code/`。
 
 ## 9. Step F6：结果落盘
 
