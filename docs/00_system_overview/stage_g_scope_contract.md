@@ -378,3 +378,52 @@ Step G6 验收状态：
 ```text
 Step G7：实现单场景库实验函数
 ```
+
+## 13. Step G7：单场景库实验函数
+
+已新增：
+
+```text
+src/cancellation/run_order_cancellation_library_scenario.m
+```
+
+函数入口：
+
+```matlab
+result = run_order_cancellation_library_scenario( ...
+    problem, machineData, agvData, baselineSchedule, scenario, config)
+```
+
+当前功能：
+
+1. 接收一个阶段 G 场景库 `scenario`。
+2. 校验 `scenario_id`、`dataset`、`seed`、`time_window`、`job_category`、`cancel` 和 `cancel_time_ratio`。
+3. 将场景库结构适配为阶段 F 单场景函数可识别的扁平结构。
+4. 复用 `run_order_cancellation_scenario` 调用阶段 B-E 链路。
+5. 返回一行 `result`。
+6. 在 `result` 中补充 `scenario_id`、`dataset`、`time_window`、`job_category`、`cancel_time_ratio`、`library_seed` 和 `scenario_notes`。
+
+边界说明：
+
+1. 函数内部不写 `outputs/`。
+2. 函数不读配置文件。
+3. 函数不创建 timestamp 输出目录。
+4. 函数不启动正式 NSGA-II 长实验。
+5. 第一版复用阶段 D 当前候选生成方式。
+
+Step G7 验收状态：
+
+1. 单场景库实验函数已存在。
+2. 每个 `result` 同时包含局部修复和完全重调度指标，这些字段来自既有 `run_order_cancellation_scenario`。
+3. 每个 `result` 记录机器、AGV、工序顺序、冻结一致性和取消任务排除等约束检查字段。
+4. 函数不在内部写 `outputs/`。
+5. 函数不启动正式 NSGA-II 长实验。
+6. 本步骤未运行 MATLAB。
+7. 本步骤未生成 `outputs/`。
+8. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G8：实现场景库实验脚本
+```
