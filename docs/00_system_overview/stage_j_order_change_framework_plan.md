@@ -121,3 +121,61 @@ event = create_schedule_change_event( ...
 | `payload` 保存不同事件类型的专属信息 | 通过，取消使用 `payload.job_id`，插单预留 `payload.new_job` |
 
 Step J2 完成标志：统一订单变更事件结构已经建立。后续可以进入 Step J3：把现有订单取消事件映射到统一结构。
+
+## 5. Step J3：映射订单取消事件到统一结构
+
+Step J3 新增两个适配函数：
+
+```text
+src/events/order_cancellation_to_schedule_change_event.m
+src/events/schedule_change_event_to_order_cancellation.m
+```
+
+现有订单取消事件结构为：
+
+```matlab
+cancel.job_id
+cancel.cancel_time
+cancel.policy
+```
+
+映射到统一事件结构后为：
+
+```matlab
+event.event_type = 'cancel_order'
+event.event_time = cancel.cancel_time
+event.policy = cancel.policy
+event.payload.job_id = cancel.job_id
+```
+
+使用方式：
+
+```matlab
+event = order_cancellation_to_schedule_change_event(cancel, eventId);
+```
+
+为了不大改阶段 B-I，统一事件也可以恢复成原来的 `cancel`：
+
+```matlab
+cancel = schedule_change_event_to_order_cancellation(event);
+```
+
+恢复后的结构仍是：
+
+```matlab
+cancel.job_id
+cancel.cancel_time
+cancel.policy
+```
+
+这意味着阶段 J 的统一事件层可以放在上层，阶段 B-I 的状态提取、局部修复、完全重调度、评价、混合策略和连续取消逻辑仍可继续使用原来的 `cancel` 输入。
+
+## 6. Step J3 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 现有订单取消逻辑仍可从统一事件恢复 `cancel` | 通过，`schedule_change_event_to_order_cancellation.m` 可恢复 `job_id`、`cancel_time` 和 `policy` |
+| 阶段 B-I 不需要大改 | 通过，新增的是上层适配函数，未修改阶段 B-I 主流程 |
+| 原有取消测试不回退 | 通过，Step J3 未修改订单取消算法逻辑；后续 Step J8 再补统一事件接口测试 |
+
+Step J3 完成标志：现有订单取消事件已经可以映射为统一 `cancel_order` 事件，也可以从统一事件恢复为阶段 B-I 使用的旧 `cancel` 结构。后续可以进入 Step J4：预留新订单插入事件结构。
