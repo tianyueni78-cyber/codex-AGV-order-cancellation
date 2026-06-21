@@ -218,18 +218,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 F Step F9 结果分析模板](docs/00_system_overview/stage_f_result_analysis_template.md) | 小规模实验结果分析口径，规定如何基于多随机种子输出形成第一版结论 |
 | [阶段 F 工作记录](docs/00_system_overview/stage_f_work_record.md) | 阶段 F 小规模实验的配置、场景、种子、入口、输出、当前结果状态、局限和后续扩展 |
 | [阶段 F 项目报告](docs/00_system_overview/stage_f_project_report.md) | 阶段 F 小规模实验的真实输出、汇总指标、第一版结论、局限和后续建议 |
-| [阶段 G Step G1 范围确认](docs/00_system_overview/stage_g_scope_contract.md) | 阶段 G 的 G-A 场景库生成、G-B 场景库实验、运行边界和禁止项 |
-| [阶段 G 场景库与实验基准扩展](docs/00_system_overview/stage_g_scenario_library_plan.md) | 阶段 G 的目标、场景库生成、场景库实验、配置、测试入口、实验入口、输出目录、局限和阶段 H 入口 |
-| [阶段 G 工作记录](docs/00_system_overview/stage_g_work_record.md) | 阶段 G 已完成的场景库工程闭环、手动测试入口、实验入口、输出状态、分析口径和阶段 H 入口 |
-| [阶段 G 项目报告](docs/00_system_overview/stage_g_project_report.md) | 阶段 G 场景库实验 `20260621_150617` 的真实输出、汇总结果、初步结论、局限和阶段 H 启发 |
-| [阶段 G 场景库配置](configs/order_cancellation_scenario_library.yaml) | 阶段 G 场景库的数据集、取消时刻、工件类别、随机种子和输出目录配置 |
-| [阶段 G Step G3 场景结构契约](docs/00_system_overview/stage_g_scenario_structure_contract.md) | 阶段 G 每个取消场景的字段、唯一编号、cancel 结构和可追溯规则 |
-| [阶段 G 场景库生成函数](src/cancellation/build_order_cancellation_scenarios.m) | 阶段 G 根据配置、基线 Cmax 和工件类别生成可复现订单取消场景 |
-| [阶段 G 场景库静态测试](tests/test_order_cancellation_scenario_library.m) | 阶段 G 验证场景生成、字段完整性、统计数量和随机 job 可复现性的测试入口 |
-| [阶段 G 单场景库实验函数](src/cancellation/run_order_cancellation_library_scenario.m) | 阶段 G 将一个场景库 scenario 适配到阶段 B-E 链路并返回单行实验结果 |
-| [阶段 G 场景库实验脚本](scripts/run_order_cancellation_scenario_library_experiment.m) | 阶段 G 批量运行场景库、汇总结果并写入 `outputs/order_cancellation_scenario_library/<timestamp>/` |
-| [阶段 G 场景库汇总函数](src/cancellation/summarize_order_cancellation_library_results.m) | 阶段 G 按数据集、时间窗、工件类别、seed、策略和可行性汇总实验结果 |
-| [阶段 G 场景库汇总测试](tests/test_order_cancellation_scenario_library_experiment_summary.m) | 阶段 G 验证场景库实验结果按时间窗、工件类别、策略和可行性正确汇总 |
+| [阶段 G 项目报告](docs/00_system_overview/stage_g_project_report.md) | 阶段 G 的范围、配置、场景库、测试入口、实验入口、真实输出、汇总结果、结论、局限和阶段 H 入口 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
 | [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
 
