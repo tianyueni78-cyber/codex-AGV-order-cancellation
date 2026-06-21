@@ -241,3 +241,48 @@ insert_order_interface_only
 | 不影响订单取消主线 | 通过，新增函数位于 `src/events/`，未修改阶段 B-I 取消链路 |
 
 Step J4 完成标志：新订单插入已经有统一事件接口预留，但完整插单算法仍未展开。后续可以进入 Step J5：实现统一事件校验函数。
+
+## 9. Step J5：实现统一事件校验函数
+
+Step J5 新增统一事件校验函数：
+
+```text
+src/events/validate_schedule_change_event.m
+```
+
+函数入口：
+
+```matlab
+[isValid, report] = validate_schedule_change_event(event, problem)
+```
+
+校验内容：
+
+- `event.event_type` 必须是支持类型：`cancel_order` 或 `insert_order`。
+- `event.event_time` 必须是非负有限数值。
+- `cancel_order` 必须包含 `event.payload.job_id`。
+- 若传入 `problem.jobNum`，`cancel_order` 的 `job_id` 必须在合法工件编号范围内。
+- `insert_order` 必须包含 `event.payload.new_job`。
+- `insert_order` 的 `new_job` 必须包含第一版预留基础字段。
+
+`insert_order` 的校验状态：
+
+```matlab
+report.status = 'pending'
+report.isPending = true
+```
+
+这表示插单事件的接口字段是合法的，但完整插单调度算法尚未实现。阶段 J 不把 `insert_order` 送入解码、搜索或评价流程。
+
+## 10. Step J5 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 合法 `cancel_order` 通过 | 通过，校验 `event_type`、`event_time` 和 `payload.job_id` |
+| 非法 `event_type` 被拒绝 | 通过，不属于 `cancel_order` / `insert_order` 会写入 `report.errors` |
+| 非法 `event_time` 被拒绝 | 通过，负数、非数值或非有限值会写入 `report.errors` |
+| 缺少 `job_id` 的取消事件被拒绝 | 通过，`cancel_order` 必须有 `event.payload.job_id` |
+| 插单事件能通过接口层校验 | 通过，`insert_order` 检查 `payload.new_job` 和基础字段 |
+| 插单事件标记为未进入完整算法 | 通过，合法 `insert_order` 返回 `report.status = 'pending'` 和 `report.isPending = true` |
+
+Step J5 完成标志：统一事件校验层已经建立。后续可以进入 Step J6：定义统一状态变化语义。
