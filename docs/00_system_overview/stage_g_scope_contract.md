@@ -495,3 +495,70 @@ Step G8 验收状态：
 ```text
 Step G9：场景库实验汇总函数
 ```
+
+## 15. Step G9：场景库实验汇总函数
+
+已新增：
+
+```text
+src/cancellation/summarize_order_cancellation_library_results.m
+```
+
+函数入口：
+
+```matlab
+summary = summarize_order_cancellation_library_results(results)
+```
+
+汇总维度：
+
+1. `summary.by_dataset`
+2. `summary.by_time_window`
+3. `summary.by_job_category`
+4. `summary.by_seed`
+5. `summary.by_selected_strategy`
+6. `summary.by_feasibility`
+
+指标：
+
+1. `local_Cmax_delta_mean`
+2. `complete_Cmax_delta_mean`
+3. `local_SD_mean`
+4. `complete_SD_mean`
+5. `local_TD_mean`
+6. `complete_TD_mean`
+7. `local_energy_delta_mean`
+8. `complete_energy_delta_mean`
+9. `local_Y_mean`
+10. `complete_Y_mean`
+11. `selected_strategy_count`
+12. `no_feasible_candidate_count`
+
+脚本复用：
+
+`scripts/run_order_cancellation_scenario_library_experiment.m` 已改为调用该汇总函数生成：
+
+```text
+scenario_summary.csv
+category_summary.csv
+strategy_counts.csv
+```
+
+Step G9 验收状态：
+
+1. 能按 `time_window` 汇总。
+2. 能按 `job_category` 汇总。
+3. 能按 `dataset` 和 `seed` 汇总。
+4. 能统计不可行数量。
+5. 能统计策略选择次数。
+6. 能输出均值指标。
+7. 汇总函数不读文件、不写 `outputs/`、不运行调度实验。
+8. 本步骤未运行 MATLAB。
+9. 本步骤未生成 `outputs/`。
+10. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G10：场景库实验测试
+```

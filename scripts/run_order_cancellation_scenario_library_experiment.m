@@ -185,7 +185,21 @@ end
 end
 
 function write_group_summary_csv(filePath, resultRows, groupField)
-groups = unique({resultRows.(groupField)}, 'stable');
+summary = summarize_order_cancellation_library_results(resultRows);
+switch groupField
+    case 'time_window'
+        groupRows = summary.by_time_window;
+    case 'job_category'
+        groupRows = summary.by_job_category;
+    case 'dataset'
+        groupRows = summary.by_dataset;
+    case 'seed'
+        groupRows = summary.by_seed;
+    otherwise
+        error('scenario_library_experiment:UnsupportedGroupField', ...
+            'Unsupported group field: %s', groupField);
+end
+
 fid = fopen(filePath, 'w');
 if fid < 0
     error('scenario_library_experiment:FileOpenFailed', ...
@@ -200,31 +214,25 @@ fprintf(fid, ['group,run_count,local_feasible_count,complete_feasible_count,', .
     'complete_energy_delta_mean,local_Y_mean,complete_Y_mean,', ...
     'selected_local_repair_count,selected_complete_rescheduling_count\n']);
 
-for i = 1:numel(groups)
-    rows = resultRows(strcmp({resultRows.(groupField)}, groups{i}));
+for i = 1:numel(groupRows)
+    row = groupRows(i);
     fprintf(fid, ['%s,%d,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,', ...
         '%.6f,%.6f,%.6f,%.6f,%.6f,%d,%d\n'], ...
-        csv_text(groups{i}), numel(rows), ...
-        sum([rows.local_isFeasible]), sum([rows.complete_isFeasible]), ...
-        sum(strcmp({rows.selected_reason}, 'no_feasible_candidate')), ...
-        mean_field(rows, 'local_Cmax_delta'), ...
-        mean_field(rows, 'complete_Cmax_delta'), ...
-        mean_field(rows, 'local_SD'), mean_field(rows, 'complete_SD'), ...
-        mean_field(rows, 'local_TD'), mean_field(rows, 'complete_TD'), ...
-        mean_field(rows, 'local_energy_delta'), ...
-        mean_field(rows, 'complete_energy_delta'), ...
-        mean_field(rows, 'local_Y'), mean_field(rows, 'complete_Y'), ...
-        sum(strcmp({rows.selected_strategy}, 'local_repair')), ...
-        sum(strcmp({rows.selected_strategy}, 'complete_rescheduling')));
+        csv_text(row.(groupField)), row.run_count, ...
+        row.local_feasible_count, row.complete_feasible_count, ...
+        row.no_feasible_candidate_count, row.local_Cmax_delta_mean, ...
+        row.complete_Cmax_delta_mean, row.local_SD_mean, ...
+        row.complete_SD_mean, row.local_TD_mean, row.complete_TD_mean, ...
+        row.local_energy_delta_mean, row.complete_energy_delta_mean, ...
+        row.local_Y_mean, row.complete_Y_mean, ...
+        row.selected_local_repair_count, ...
+        row.selected_complete_rescheduling_count);
 end
 end
 
 function write_strategy_counts_csv(filePath, resultRows)
-labels = cell(1, numel(resultRows));
-for i = 1:numel(resultRows)
-    labels{i} = strategy_label(resultRows(i));
-end
-strategies = unique(labels, 'stable');
+summary = summarize_order_cancellation_library_results(resultRows);
+strategyRows = summary.by_selected_strategy;
 
 fid = fopen(filePath, 'w');
 if fid < 0
@@ -234,9 +242,9 @@ end
 cleanup = onCleanup(@() fclose(fid));
 
 fprintf(fid, 'selected_strategy,count\n');
-for i = 1:numel(strategies)
-    fprintf(fid, '%s,%d\n', csv_text(strategies{i}), ...
-        sum(strcmp(labels, strategies{i})));
+for i = 1:numel(strategyRows)
+    fprintf(fid, '%s,%d\n', csv_text(strategyRows(i).selected_strategy), ...
+        strategyRows(i).count);
 end
 end
 
@@ -508,26 +516,6 @@ row.selected_Y = NaN;
 row.local_error_count = 0;
 row.complete_error_count = 0;
 row.error_message = '';
-end
-
-function value = mean_field(rows, fieldName)
-values = [rows.(fieldName)];
-values = values(isfinite(values));
-if isempty(values)
-    value = NaN;
-else
-    value = mean(values);
-end
-end
-
-function label = strategy_label(row)
-if ~isempty(row.selected_strategy)
-    label = row.selected_strategy;
-elseif ~isempty(row.selected_reason)
-    label = row.selected_reason;
-else
-    label = 'no_selection';
-end
 end
 
 function value = join_notes(notes)
