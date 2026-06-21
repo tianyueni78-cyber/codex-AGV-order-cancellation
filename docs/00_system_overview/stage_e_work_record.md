@@ -413,3 +413,18 @@ Step E15 静态验收结果：
 5. 汇总表和研究结论。
 
 阶段 E 不负责这些正式实验内容。
+
+## 14. 已整合的原拆分文档
+
+原 `stage_e_evaluation_contract.md` 中仍有价值的内容已经整合到本文档：
+
+1. 输入契约：阶段 E 只接收已经生成并经过可行性检查的局部修复候选和完全重调度候选。
+2. 禁止行为：阶段 E 不重新解码、不重新搜索、不修改候选计划。
+3. 基线来源：`Cmax_delta` 和 `energy_delta` 均相对于取消前正常调度 `baselineSchedule` 计算。
+4. 指标定义：`Cmax_delta`、`SD`、`TD`、`energy`、`energy_delta` 和 `Y`。
+5. 评价输出：每个候选都记录 `metrics`、`isFeasible` 和不可评价原因。
+6. 策略选择：两个候选都可行时选 `Y` 更小者；只有一个可行时选可行者；两个都不可行时拒绝选择；`Y` 相同时第一版选择局部修复。
+7. outputs 约定：smoke 输出写入 timestamp 目录，包含 `summary.json`、`metrics.csv` 和 `selected_strategy.txt`。
+8. 阶段边界：阶段 E 不是多随机种子正式实验，不包含机器故障、新订单插入或强化学习。
+
+因此，阶段 E 的主阅读入口只保留本文档；`stage_e_evaluation_contract.md` 可作为历史过程记录。

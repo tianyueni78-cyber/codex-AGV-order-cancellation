@@ -279,3 +279,15 @@ unsupported_agv_tasks: 0
 ```
 
 阶段 C 的第一版应继续保持删除式局部修复：只删除被取消订单中尚未开工的机器工序和尚未执行的 AGV 运输任务，不移动其他任务时间，不调用 NSGA-II。
+
+## 7. 已整合的原拆分文档
+
+原 `order_cancellation_state_contract.md` 中仍有价值的内容已经整合到本文档：
+
+1. 适用范围：阶段 B 只定义单订单取消事件和取消时刻状态提取。
+2. 状态分类规则：`end <= cancel_time` 为已完成，`start < cancel_time < end` 为正在加工或运输，`start >= cancel_time` 为尚未开工或尚未执行。
+3. 边界条件：`cancel_time == start` 归入尚未开工，`cancel_time == end` 归入已完成。
+4. 被取消订单处理：已完成任务保留为历史，正在加工或运输第一版标记为 unsupported，尚未开工或尚未执行任务列入取消列表。
+5. 后续复用方式：阶段 C 使用取消列表做删除式局部修复，阶段 D 使用完成前缀和剩余任务集做完全重调度。
+
+因此，阶段 B 的主阅读入口只保留本文档；`order_cancellation_state_contract.md` 可作为历史过程记录。

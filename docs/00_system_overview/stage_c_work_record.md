@@ -324,3 +324,18 @@ rejected_reason_count: 0
 ```
 
 阶段 D 应与阶段 C 保持分离。阶段 C 的删除式局部修复候选不应被改造成 NSGA-II 搜索入口。
+
+## 7. 已整合的原拆分文档
+
+原 `stage_c_local_repair_contract.md` 中仍有价值的内容已经整合到本文档：
+
+1. 输入契约：局部修复只接收 `problem`、原 `machineTable`、原 `AGVTable`、阶段 B 的 `state` 和 `cancel`。
+2. 支持策略：第一版只支持 `cancel_unstarted_operations_only`。
+3. 拒绝条件：存在正在加工的取消相关工序、正在运输的取消相关 AGV 任务，或 `state` 标记 unsupported 时拒绝修复。
+4. 输出结构：`candidate.machineTable`、`candidate.AGVTable`、`removed_operations`、`removed_agv_tasks`、`isFeasible` 和 `report`。
+5. 删除规则：只删除被取消订单中尚未开工的机器工序和尚未执行的 AGV 任务；已完成历史任务保留。
+6. 空闲块策略：第一版不左移剩余任务，不改变未取消订单的原开始/结束时间。
+7. 可行性检查：机器时间冲突、AGV 时间冲突、工件工序顺序均必须检查并写入 report。
+8. 阶段边界：阶段 C 不计算 `Y`，不比较局部修复和完全重调度，不启动正式实验。
+
+因此，阶段 C 的主阅读入口只保留本文档；`stage_c_local_repair_contract.md` 可作为历史过程记录。

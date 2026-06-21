@@ -309,3 +309,19 @@ Step D14 静态验收结果：
 13. `git diff --check` 通过。
 
 本次静态验收没有运行 MATLAB，没有生成 `outputs/`。
+
+## 12. 已整合的原拆分文档
+
+原 `stage_d_complete_rescheduling_contract.md` 中仍有价值的内容已经整合到本文档：
+
+1. 输入契约：完全重调度接收 `problem`、`machineData`、`agvData`、原计划、阶段 B 的 `state`、`cancel` 和 `config`。
+2. 冻结规则：`end <= cancel_time` 的机器工序和 AGV 任务冻结，开始/结束时间不得改变。
+3. 任务排除规则：被取消订单未完成工序和运输任务不得进入重调度任务集。
+4. 重调度任务来源：未取消订单中尚未完成的工序进入 remaining set。
+5. 约束接口：剩余任务开始时间不得早于 `cancel_time`，冻结机器和 AGV 占用需保留。
+6. 解码复用：第一版优先复用 `src/decoding/` 中 independent 相关入口，不重写一套解码器。
+7. 候选输出：记录冻结任务、重调度任务、排除任务、完整 `machineTable`、完整 `AGVTable`、`isFeasible` 和 `report`。
+8. 可行性检查：复用阶段 C 的机器冲突、AGV 冲突、工件工序顺序检查，并额外检查冻结一致性和取消任务排除。
+9. 阶段边界：阶段 D 不计算 `Y`，不和局部修复比较，不写正式实验结果。
+
+因此，阶段 D 的主阅读入口只保留本文档；`stage_d_complete_rescheduling_contract.md` 可作为历史过程记录。

@@ -50,7 +50,21 @@ configs/order_cancellation_small_experiment.yaml
 | `middle_cancel` | `0.50` | `9.000000` |
 | `late_cancel` | `0.75` | `13.500000` |
 
-## 3. 输出位置
+## 3. 已整合的范围、计划和分析口径
+
+原阶段 F 的范围确认、工作计划、分析模板和工作记录已经整合到本文档。保留要点如下：
+
+1. 阶段 F 只做单订单取消小规模实验。
+2. 阶段 F 不加入机器故障、新订单插入、多个订单连续取消、强化学习或全局最优证明。
+3. 实验入口只调用阶段 B-E 已有链路，不新增新的调度算法主线。
+4. 最小场景为早期取消、中期取消和后期取消。
+5. 每个场景都应同时报告局部修复和完全重调度。
+6. 每个场景都应报告调度约束检查结果或不可行原因。
+7. 多随机种子汇总后才形成结论，不把单个 smoke 输出当作研究结论。
+8. 结果必须写入 `outputs/order_cancellation_small_experiment/<timestamp>/`。
+9. 分析口径包括策略选择倾向、`Cmax_delta`、`SD`、`TD`、能耗变化和不可行案例来源。
+
+## 4. 输出位置
 
 本次输出目录：
 
@@ -69,9 +83,9 @@ experiment_notes.md
 run_summary.txt
 ```
 
-## 4. 汇总结果
+## 5. 汇总结果
 
-### 4.1 场景级结果
+### 5.1 场景级结果
 
 | 场景 | 运行次数 | 局部修复可评价次数 | 完全重调度可评价次数 | 局部修复选择次数 | 完全重调度选择次数 |
 |---|---:|---:|---:|---:|---:|
@@ -87,7 +101,7 @@ run_summary.txt
 | `local_repair` | 3 |
 | `complete_rescheduling` | 0 |
 
-### 4.2 中期取消指标
+### 5.2 中期取消指标
 
 `middle_cancel` 是本次唯一可评价的场景。三个 seed 的结果一致：
 
@@ -107,7 +121,7 @@ run_summary.txt
 4. 综合指标 `Y` 两者相同，均为 `0.500000`。
 5. 因 `Y` 相同，阶段 E 的第一版 tie-break 规则选择更保守的 `local_repair`。
 
-## 5. 小规模结论
+## 6. 小规模结论
 
 基于 `20260621_094024` 的阶段 F 小规模实验，本次共运行 9 个场景-seed 组合，覆盖 `early_cancel`、`middle_cancel`、`late_cancel` 三类取消场景。
 
@@ -120,7 +134,7 @@ run_summary.txt
 5. 在 `middle_cancel` 中，两类候选的 `Y` 相同，因此第一版策略选择按 tie-break 规则选择 `local_repair`。
 6. 当前结果不能证明局部修复整体优于完全重调度，只能说明在本次权重、归一化和 tie-break 规则下，中期取消最终选择了局部修复。
 
-## 6. 不可行案例说明
+## 7. 不可行案例说明
 
 `early_cancel` 和 `late_cancel` 的 6 次运行均显示：
 
@@ -134,7 +148,7 @@ selected_reason = no_feasible_candidate
 
 后续应扩展 `seed_results.csv`，把 `local_rejectedReasons` 和 `complete_rejectedReasons` 写入输出，便于定位不可行原因。
 
-## 7. 局限
+## 8. 局限
 
 本次阶段 F 结果有以下局限：
 
@@ -153,7 +167,7 @@ selected_reason = no_feasible_candidate
 
 因此，本报告是阶段 F 小规模实验报告，不是最终论文级实验结论。
 
-## 8. 阶段 F 完成判断
+## 9. 阶段 F 完成判断
 
 按阶段 F 完成标志，本次已满足：
 
@@ -166,7 +180,7 @@ selected_reason = no_feasible_candidate
 
 因此，阶段 F 第一版小规模实验闭环已完成。
 
-## 9. 后续建议
+## 10. 后续建议
 
 建议下一步优先做：
 
