@@ -23,9 +23,15 @@ outputDir = create_output_dir(projectRoot, experimentConfig.output_base_dir);
 results = run_scenarios( ...
     problem, machineData, agvData, baselineSchedule, experimentConfig);
 
+write_scenario_results_csv( ...
+    fullfile(outputDir, 'scenario_results.csv'), results);
 write_seed_results_csv(fullfile(outputDir, 'seed_results.csv'), results);
 write_selected_strategy_counts( ...
     fullfile(outputDir, 'selected_strategy_counts.csv'), results);
+write_summary_json(fullfile(outputDir, 'summary.json'), ...
+    experimentConfig, outputDir, results);
+write_experiment_notes(fullfile(outputDir, 'experiment_notes.md'), ...
+    experimentConfig, results);
 write_run_summary(fullfile(outputDir, 'run_summary.txt'), ...
     experimentConfig, outputDir, results);
 
@@ -36,8 +42,13 @@ fprintf('seed_count: %d\n', numel(experimentConfig.seeds));
 fprintf('run_count: %d\n', numel(results));
 fprintf('output_dir: %s\n', outputDir);
 fprintf('seed_results_csv: %s\n', fullfile(outputDir, 'seed_results.csv'));
+fprintf('scenario_results_csv: %s\n', ...
+    fullfile(outputDir, 'scenario_results.csv'));
+fprintf('summary_json: %s\n', fullfile(outputDir, 'summary.json'));
 fprintf('selected_strategy_counts_csv: %s\n', ...
     fullfile(outputDir, 'selected_strategy_counts.csv'));
+fprintf('experiment_notes_md: %s\n', ...
+    fullfile(outputDir, 'experiment_notes.md'));
 fprintf('run_summary_txt: %s\n', fullfile(outputDir, 'run_summary.txt'));
 
 function results = run_scenarios( ...
@@ -118,6 +129,45 @@ for i = 1:numel(results)
 end
 end
 
+function write_scenario_results_csv(filePath, results)
+scenarioNames = unique({results.scenario_name}, 'stable');
+fid = fopen(filePath, 'w');
+if fid < 0
+    error('small_experiment:FileOpenFailed', ...
+        'Cannot open scenario_results.csv for writing.');
+end
+cleanup = onCleanup(@() fclose(fid));
+
+fprintf(fid, ['scenario_name,run_count,local_feasible_count,', ...
+    'complete_feasible_count,local_Cmax_delta_mean,', ...
+    'complete_Cmax_delta_mean,local_SD_mean,complete_SD_mean,', ...
+    'local_TD_mean,complete_TD_mean,local_energy_delta_mean,', ...
+    'complete_energy_delta_mean,local_Y_mean,complete_Y_mean,', ...
+    'selected_local_repair_count,selected_complete_rescheduling_count\n']);
+
+for i = 1:numel(scenarioNames)
+    scenarioName = scenarioNames{i};
+    rows = results(strcmp({results.scenario_name}, scenarioName));
+    fprintf(fid, ['%s,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,', ...
+        '%.6f,%.6f,%.6f,%.6f,%d,%d\n'], ...
+        scenarioName, numel(rows), ...
+        sum([rows.local_isFeasible]), ...
+        sum([rows.complete_isFeasible]), ...
+        mean_numeric_field(rows, 'local_Cmax_delta'), ...
+        mean_numeric_field(rows, 'complete_Cmax_delta'), ...
+        mean_numeric_field(rows, 'local_SD'), ...
+        mean_numeric_field(rows, 'complete_SD'), ...
+        mean_numeric_field(rows, 'local_TD'), ...
+        mean_numeric_field(rows, 'complete_TD'), ...
+        mean_numeric_field(rows, 'local_energy_delta'), ...
+        mean_numeric_field(rows, 'complete_energy_delta'), ...
+        mean_numeric_field(rows, 'local_Y'), ...
+        mean_numeric_field(rows, 'complete_Y'), ...
+        sum(strcmp({rows.selected_strategy}, 'local_repair')), ...
+        sum(strcmp({rows.selected_strategy}, 'complete_rescheduling')));
+end
+end
+
 function write_selected_strategy_counts(filePath, results)
 strategyNames = unique({results.selected_strategy}, 'stable');
 fid = fopen(filePath, 'w');
@@ -133,6 +183,75 @@ for i = 1:numel(strategyNames)
     count = sum(strcmp({results.selected_strategy}, strategyName));
     fprintf(fid, '%s,%d\n', strategyName, count);
 end
+end
+
+function write_summary_json(filePath, experimentConfig, outputDir, results)
+summary = struct();
+summary.experiment_name = 'order_cancellation_small_experiment';
+summary.dataset = experimentConfig.dataset;
+summary.cancel_policy = experimentConfig.cancel_policy;
+summary.cancel_time_source = experimentConfig.cancel_time_source;
+summary.scenarios = experimentConfig.scenarios;
+summary.seeds = experimentConfig.seeds;
+summary.output_dir = outputDir;
+summary.output_files = { ...
+    'scenario_results.csv', ...
+    'seed_results.csv', ...
+    'summary.json', ...
+    'selected_strategy_counts.csv', ...
+    'experiment_notes.md'};
+summary.run_count = numel(results);
+summary.scenario_count = numel(experimentConfig.scenarios);
+summary.seed_count = numel(experimentConfig.seeds);
+summary.evaluation = struct();
+summary.evaluation.weights = struct( ...
+    'Cmax_delta', 0.25, ...
+    'SD', 0.25, ...
+    'TD', 0.25, ...
+    'energy_delta', 0.25);
+summary.evaluation.normalization = ...
+    'per_run_minmax_if_both_candidates_feasible_else_wide_fallback';
+summary.scope = struct();
+summary.scope.multiseed = true;
+summary.scope.formal_experiment = false;
+summary.scope.machine_failure = false;
+summary.scope.new_order_insertion = false;
+summary.scope.sequential_cancellation = false;
+summary.scope.reinforcement_learning = false;
+summary.scope.global_optimality_proof = false;
+
+write_text(filePath, jsonencode(summary));
+end
+
+function write_experiment_notes(filePath, experimentConfig, results)
+lines = {
+    '# Stage F Small Experiment Notes'
+    ''
+    'Generated by `scripts/run_order_cancellation_small_experiment.m`.'
+    ''
+    '## Scope'
+    ''
+    sprintf('- Dataset: `%s`', experimentConfig.dataset)
+    sprintf('- Cancellation policy: `%s`', experimentConfig.cancel_policy)
+    sprintf('- Scenario count: `%d`', numel(experimentConfig.scenarios))
+    sprintf('- Seed count: `%d`', numel(experimentConfig.seeds))
+    sprintf('- Run count: `%d`', numel(results))
+    ''
+    '## Interpretation Boundaries'
+    ''
+    '- This is a stage F small experiment, not a final large-scale conclusion.'
+    '- Machine failure is out of scope.'
+    '- New order insertion is out of scope.'
+    '- Sequential order cancellation is out of scope.'
+    '- Reinforcement learning is out of scope.'
+    '- Global optimality proof is out of scope.'
+    ''
+    '## Next Step'
+    ''
+    ['Research conclusions should be formed only after reviewing ', ...
+    '`scenario_results.csv`, `seed_results.csv`, and constraint checks.']
+};
+write_text(filePath, strjoin(lines, newline));
 end
 
 function write_run_summary(filePath, experimentConfig, outputDir, results)
@@ -158,6 +277,26 @@ fprintf(fid, 'scope.machine_failure: false\n');
 fprintf(fid, 'scope.new_order_insertion: false\n');
 fprintf(fid, 'scope.reinforcement_learning: false\n');
 fprintf(fid, 'scope.global_optimality_proof: false\n');
+end
+
+function write_text(filePath, text)
+fid = fopen(filePath, 'w');
+if fid < 0
+    error('small_experiment:FileOpenFailed', ...
+        'Cannot open file for writing: %s', filePath);
+end
+cleanup = onCleanup(@() fclose(fid));
+fprintf(fid, '%s\n', text);
+end
+
+function value = mean_numeric_field(rows, fieldName)
+values = [rows.(fieldName)];
+values = values(isfinite(values));
+if isempty(values)
+    value = NaN;
+else
+    value = mean(values);
+end
 end
 
 function config = load_small_experiment_config(configPath)

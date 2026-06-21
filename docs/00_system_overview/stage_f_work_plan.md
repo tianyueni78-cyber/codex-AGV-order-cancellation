@@ -326,7 +326,7 @@ selected_strategy_counts.csv
 run_summary.txt
 ```
 
-说明：`scenario_results.csv`、`summary.json` 和 `experiment_notes.md` 的完整汇总口径留到 Step F6 继续补齐。
+说明：Step F6 已补齐 `scenario_results.csv`、`summary.json` 和 `experiment_notes.md` 的完整落盘口径。
 
 验收标准：
 
@@ -351,7 +351,7 @@ Step F5 静态验收结果：
 
 目标：把每个场景和每个随机种子的结果写入 `outputs/`。
 
-建议输出：
+已实现输出：
 
 ```text
 outputs/order_cancellation_small_experiment/<timestamp>/scenario_results.csv
@@ -361,6 +361,14 @@ outputs/order_cancellation_small_experiment/<timestamp>/selected_strategy_counts
 outputs/order_cancellation_small_experiment/<timestamp>/experiment_notes.md
 ```
 
+输出说明：
+
+1. `scenario_results.csv` 按场景汇总均值、可行数量和策略选择次数。
+2. `seed_results.csv` 保留每个场景、每个随机种子的原始运行结果。
+3. `summary.json` 记录配置、数据集、权重、归一化说明和 scope。
+4. `selected_strategy_counts.csv` 统计每类策略被选中的次数。
+5. `experiment_notes.md` 说明本次实验范围和解释边界。
+
 验收标准：
 
 1. `scenario_results.csv` 汇总每个场景的均值。
@@ -368,6 +376,16 @@ outputs/order_cancellation_small_experiment/<timestamp>/experiment_notes.md
 3. `summary.json` 记录配置、数据集、权重、归一化和 scope。
 4. `selected_strategy_counts.csv` 统计每类策略被选中的次数。
 5. `experiment_notes.md` 说明本次实验不是最终结论。
+
+Step F6 静态验收结果：
+
+1. `scripts/run_order_cancellation_small_experiment.m` 已写入 `scenario_results.csv`。
+2. `scripts/run_order_cancellation_small_experiment.m` 已写入 `seed_results.csv`。
+3. `scripts/run_order_cancellation_small_experiment.m` 已写入 `summary.json`。
+4. `scripts/run_order_cancellation_small_experiment.m` 已写入 `selected_strategy_counts.csv`。
+5. `scripts/run_order_cancellation_small_experiment.m` 已写入 `experiment_notes.md`。
+6. 输出目录使用 `outputs/order_cancellation_small_experiment/<timestamp>/`，不会覆盖旧输出目录。
+7. 本步骤未运行 MATLAB，未生成 `outputs/`，未修改 `raw_code/`。
 
 ## 10. Step F7：小规模实验测试
 
