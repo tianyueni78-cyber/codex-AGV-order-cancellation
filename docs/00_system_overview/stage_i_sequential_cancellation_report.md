@@ -111,7 +111,32 @@ Smoke 入口：
 run('scripts/run_order_cancellation_sequential_smoke.m')
 ```
 
-当前报告尚未写入 smoke 输出，因为还没有收到该脚本的实际运行结果。收到输出后，需要补充每轮取消事件、局部修复可行性、完全重调度可行性、混合策略选择原因和最终计划约束检查结果。
+已收到的 smoke 输出摘要：
+
+| 字段 | 结果 | 含义 |
+|---|---:|---|
+| `dataset` | `data_sample/Mk01.fjs` | 使用最小样例数据验证连续取消链路 |
+| `event_count` | 2 | 本次 smoke 包含两个取消事件 |
+| `completed_event_count` | 2 | 两个取消事件均完成处理 |
+| `result.isFeasible` | 1 | 连续取消整体结果可行 |
+| `cancelledJobSet` | `[2, 3]` | 已取消订单集合正确记录了第 2 和第 3 个订单 |
+| `unsupported_event_count` | 0 | 没有出现正在加工或正在运输取消导致的 unsupported |
+
+逐事件结果：
+
+| 事件 | 取消订单 | 取消时刻 | 局部修复 | 完全重调度 | 最终选择 | 选择原因 | 是否回流 | 最终约束 |
+|---|---:|---:|---:|---:|---|---|---:|---:|
+| event 1 | 2 | 10 | 可行 | 不可行 | `local_repair` | `local_stable_enough` | 0 | 可行 |
+| event 2 | 3 | 14 | 可行 | 不可行 | `local_repair` | `local_stable_enough` | 0 | 可行 |
+
+数据含义：
+
+- 两次订单取消都按时间顺序完成，说明阶段 I 已经能处理至少两个连续取消事件。
+- 两轮最终都选择 `local_repair`，因为局部修复可行且满足混合策略的稳定性阈值，未触发完全重调度。
+- `complete_candidate.isFeasible = 0` 表示完全重调度候选在当前样例和当前第一版候选生成方式下不可作为最终方案；这不影响阶段 I 成功，因为混合策略会选择可行的局部修复方案。
+- `cancelled_job_backflow_detected = 0` 表示已取消订单没有在后续计划中回流。
+- 每轮 `selected_machine_check`、`selected_agv_check`、`selected_job_sequence_check` 和 `selected_constraint_check` 均为 1，说明最终选择计划通过机器时间、AGV 时间和工件工序顺序检查。
+- `unsupported_event_count = 0` 说明本次样例没有触发正在加工取消或正在运输取消；unsupported 分支已在单元测试和文档规则中保留。
 
 ### 0.10 局限
 
@@ -549,7 +574,7 @@ Step I9 完成时应满足：
 - 不写 `outputs/`。
 - 不做正式多随机种子实验。
 
-当前状态：smoke 脚本入口已完成，MATLAB smoke 输出等待用户运行后补充到本报告。
+当前状态：smoke 脚本已运行并收到输出。本次样例包含两个连续取消事件，两个事件均完成处理，整体 `result.isFeasible = 1`，最终选择方案均通过约束检查。
 
 ## 14. Step I1 验收标准
 
@@ -594,7 +619,7 @@ Step I2 完成时应满足：
 - 已取消订单不会在后续计划中回流。
 - 每轮计划通过约束检查，或明确记录不可行/unsupported 原因。
 
-当前已通过 `test_order_cancellation_sequential_events.m` 验证连续取消主流程。阶段 I 的最终项目报告仍需在用户运行 smoke 后补充 smoke 输出结果。
+当前已通过 `test_order_cancellation_sequential_events.m` 验证连续取消主流程，并已通过 `run_order_cancellation_sequential_smoke.m` 在 `data_sample/Mk01.fjs` 上验证两次连续取消样例。阶段 I 完成标志已满足。
 
 ## 18. Step I11 静态验收结果
 
@@ -625,4 +650,4 @@ test_order_cancellation_sequential_events passed
 >>
 ```
 
-阶段 I 静态验收结论：阶段 I 的文件结构、主报告入口和核心范围控制均满足验收要求。smoke 输出仍需用户运行 `run('scripts/run_order_cancellation_sequential_smoke.m')` 后补充。
+阶段 I 静态验收结论：阶段 I 的文件结构、主报告入口和核心范围控制均满足验收要求。smoke 输出已补充到本报告，阶段 I 可作为连续取消主线的第一版完成状态。
