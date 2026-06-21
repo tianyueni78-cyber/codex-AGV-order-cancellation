@@ -186,22 +186,26 @@ experiment_notes.md
 
 ## 10. 当前输出状态
 
-截至本文档编写时，本地未发现阶段 G 输出目录：
+阶段 G 已经运行场景库实验，输出目录为：
 
 ```text
-outputs/order_cancellation_scenario_library/
+outputs/order_cancellation_scenario_library/20260621_150617/
 ```
 
-因此当前不能给出阶段 G 的真实实验结论，也不能判断哪类场景下局部修复或完全重调度更有优势。
+本次实验规模：
 
-当前能确认的是工程闭环已经具备：
+1. 数据集数量：`1`。
+2. 场景数量：`45`。
+3. 运行数量：`45`。
+4. 时间窗口：`early`、`middle`、`late`。
+5. 工件类别：`random`、`short`、`long`、`critical`、`noncritical`。
+6. 随机种子：`1`、`2`、`3`。
 
-1. 能从配置生成场景库。
-2. 能将单个场景接入阶段 B-E。
-3. 能批量运行场景库实验脚本。
-4. 能按场景维度汇总结果。
+基于该输出，已形成阶段 G 项目报告：
 
-阶段 G 的研究价值需要等待你手动运行场景库实验后，根据 `outputs/order_cancellation_scenario_library/<timestamp>/` 中的结果再补充分析。
+```text
+docs/00_system_overview/stage_g_project_report.md
+```
 
 ## 11. 结果分析口径
 
@@ -234,8 +238,8 @@ outputs/order_cancellation_scenario_library/
 
 ```text
 工程闭环已完成；
-真实实验输出尚未在本地发现；
-阶段 G 项目报告的结果分析部分等待你运行实验后补充。
+真实实验输出已生成；
+阶段 G 项目报告已基于 20260621_150617 输出补充。
 ```
 
 ## 13. 局限

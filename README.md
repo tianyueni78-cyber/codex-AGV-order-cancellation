@@ -221,6 +221,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 G Step G1 范围确认](docs/00_system_overview/stage_g_scope_contract.md) | 阶段 G 的 G-A 场景库生成、G-B 场景库实验、运行边界和禁止项 |
 | [阶段 G 场景库与实验基准扩展](docs/00_system_overview/stage_g_scenario_library_plan.md) | 阶段 G 的目标、场景库生成、场景库实验、配置、测试入口、实验入口、输出目录、局限和阶段 H 入口 |
 | [阶段 G 工作记录](docs/00_system_overview/stage_g_work_record.md) | 阶段 G 已完成的场景库工程闭环、手动测试入口、实验入口、输出状态、分析口径和阶段 H 入口 |
+| [阶段 G 项目报告](docs/00_system_overview/stage_g_project_report.md) | 阶段 G 场景库实验 `20260621_150617` 的真实输出、汇总结果、初步结论、局限和阶段 H 启发 |
 | [阶段 G 场景库配置](configs/order_cancellation_scenario_library.yaml) | 阶段 G 场景库的数据集、取消时刻、工件类别、随机种子和输出目录配置 |
 | [阶段 G Step G3 场景结构契约](docs/00_system_overview/stage_g_scenario_structure_contract.md) | 阶段 G 每个取消场景的字段、唯一编号、cancel 结构和可追溯规则 |
 | [阶段 G 场景库生成函数](src/cancellation/build_order_cancellation_scenarios.m) | 阶段 G 根据配置、基线 Cmax 和工件类别生成可复现订单取消场景 |
@@ -258,6 +259,6 @@ outputs/        生成的输出和日志，不提交 Git
 阶段 E 完成候选评价与策略选择。
 阶段 F 完成小规模实验入口、汇总和项目报告。
 阶段 G 完成场景库生成、场景库实验入口、结果汇总和工作记录。
-阶段 G 的真实研究结论需要在运行场景库实验后，基于 outputs/order_cancellation_scenario_library/<timestamp>/ 再补充。
-下一步建议：先运行阶段 G 测试和场景库实验；拿到输出后补充阶段 G 项目报告，再进入阶段 H：混合修复策略。
+阶段 G 已基于 outputs/order_cancellation_scenario_library/20260621_150617/ 形成项目报告。
+下一步建议：进入阶段 H：混合修复策略，重点研究什么时候只做局部修复、什么时候触发完全重调度。
 ```
