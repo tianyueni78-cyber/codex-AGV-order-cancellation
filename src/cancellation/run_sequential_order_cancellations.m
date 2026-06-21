@@ -81,6 +81,12 @@ completeCandidate = build_complete_rescheduling_candidate( ...
     problem, machineData, agvData, currentSchedule, state, cancel, ...
     chrom, decodeConfig);
 
+cancelledRecordsForEvent = [cancelledRecords, event];
+[localCandidate, localBackflowReport] = reject_backflow_candidate( ...
+    localCandidate, cancelledRecordsForEvent, 'local_repair');
+[completeCandidate, completeBackflowReport] = reject_backflow_candidate( ...
+    completeCandidate, cancelledRecordsForEvent, 'complete_rescheduling');
+
 wideConfig = build_wide_evaluation_config(config);
 [localPreEvaluation, completePreEvaluation] = evaluate_candidates( ...
     currentSchedule, localCandidate, completeCandidate, cancel, ...
@@ -98,15 +104,25 @@ decision = select_hybrid_cancellation_policy( ...
 
 eventResult = build_event_result( ...
     event, state, localCandidate, completeCandidate, localEvaluation, ...
-    completeEvaluation, decision, cancelledRecords);
+    completeEvaluation, decision, cancelledRecords, localBackflowReport, ...
+    completeBackflowReport);
 
 nextSchedule = currentSchedule;
-if decision.isSelected
+if eventResult.cancelled_job_backflow_detected
+    eventResult.decision_isSelected = false;
+    eventResult.selected_strategy = '';
+    eventResult.decision_reason = 'cancelled_job_backflow_detected';
+elseif decision.isSelected
     nextSchedule = decision.selected_candidate;
+    selectedBackflowReport = check_cancelled_job_backflow( ...
+        nextSchedule, cancelledRecordsForEvent, 'selected_candidate');
+    eventResult.selected_candidate_backflow_detected = ...
+        selectedBackflowReport.hasBackflow;
     eventResult.cancelled_job_backflow_detected = ...
-        has_cancelled_job_backflow(nextSchedule, ...
-        [cancelledRecords, event]);
-    if eventResult.cancelled_job_backflow_detected
+        eventResult.cancelled_job_backflow_detected || ...
+        selectedBackflowReport.hasBackflow;
+    eventResult.details.selectedBackflowReport = selectedBackflowReport;
+    if selectedBackflowReport.hasBackflow
         nextSchedule = currentSchedule;
         eventResult.decision_isSelected = false;
         eventResult.selected_strategy = '';
@@ -148,6 +164,9 @@ eventResult.decision_isSelected = false;
 eventResult.selected_strategy = '';
 eventResult.decision_reason = '';
 eventResult.triggered_complete_rescheduling = false;
+eventResult.local_candidate_backflow_detected = false;
+eventResult.complete_candidate_backflow_detected = false;
+eventResult.selected_candidate_backflow_detected = false;
 eventResult.cancelled_job_backflow_detected = false;
 eventResult.details = struct();
 if isempty(initialValue)
@@ -167,7 +186,8 @@ end
 
 function eventResult = build_event_result( ...
     event, state, localCandidate, completeCandidate, localEvaluation, ...
-    completeEvaluation, decision, cancelledRecords)
+    completeEvaluation, decision, cancelledRecords, localBackflowReport, ...
+    completeBackflowReport)
 eventResult = event_result_template(0);
 eventResult.event_id = event.event_id;
 eventResult.job_id = event.job_id;
@@ -186,7 +206,13 @@ eventResult.selected_strategy = decision.selected_strategy;
 eventResult.decision_reason = decision.reason;
 eventResult.triggered_complete_rescheduling = ...
     decision.triggered_complete_rescheduling;
-eventResult.cancelled_job_backflow_detected = false;
+eventResult.local_candidate_backflow_detected = ...
+    localBackflowReport.hasBackflow;
+eventResult.complete_candidate_backflow_detected = ...
+    completeBackflowReport.hasBackflow;
+eventResult.selected_candidate_backflow_detected = false;
+eventResult.cancelled_job_backflow_detected = ...
+    localBackflowReport.hasBackflow || completeBackflowReport.hasBackflow;
 eventResult.details = struct();
 eventResult.details.state = state;
 eventResult.details.localCandidate = localCandidate;
@@ -195,6 +221,34 @@ eventResult.details.localEvaluation = localEvaluation;
 eventResult.details.completeEvaluation = completeEvaluation;
 eventResult.details.decision = decision;
 eventResult.details.cancelledEventsBeforeEvent = cancelledRecords;
+eventResult.details.localBackflowReport = localBackflowReport;
+eventResult.details.completeBackflowReport = completeBackflowReport;
+end
+
+function [candidate, backflowReport] = reject_backflow_candidate( ...
+    candidate, cancelledRecords, candidateName)
+backflowReport = check_cancelled_job_backflow( ...
+    candidate, cancelledRecords, candidateName);
+if ~backflowReport.hasBackflow
+    return
+end
+
+candidate.isFeasible = false;
+if ~isfield(candidate, 'report') || ~isstruct(candidate.report)
+    candidate.report = struct();
+end
+if ~isfield(candidate.report, 'errors')
+    candidate.report.errors = {};
+end
+if ~isfield(candidate.report, 'rejectedReasons')
+    candidate.report.rejectedReasons = {};
+end
+candidate.report.errors{end + 1} = sprintf( ...
+    '%s contains unfinished tasks from already cancelled jobs.', ...
+    candidateName);
+candidate.report.rejectedReasons{end + 1} = ...
+    'cancelled_job_backflow_detected';
+candidate.report.cancelledJobBackflowCheck = backflowReport;
 end
 
 function decodeConfig = build_decode_config(config)
@@ -323,9 +377,22 @@ end
 chrom = [OS, MS, AS, SS];
 end
 
-function hasBackflow = has_cancelled_job_backflow(schedule, cancelledRecords)
-hasBackflow = false;
-if isempty(cancelledRecords) || ~isfield(schedule, 'machineTable')
+function report = check_cancelled_job_backflow( ...
+    schedule, cancelledRecords, scheduleName)
+report = struct();
+report.scheduleName = scheduleName;
+report.hasBackflow = false;
+report.machineBackflowTasks = backflow_task_template([]);
+report.agvBackflowTasks = backflow_task_template([]);
+report.errors = {};
+
+if isempty(cancelledRecords)
+    return
+end
+
+if ~isfield(schedule, 'machineTable')
+    report.errors{end + 1} = sprintf( ...
+        '%s.machineTable is required for backflow check.', scheduleName);
     return
 end
 
@@ -333,14 +400,16 @@ for machineIdx = 1:numel(schedule.machineTable)
     rows = schedule.machineTable{machineIdx};
     for rowIdx = 1:numel(rows)
         row = rows(rowIdx);
-        if is_backflow_schedule_block(row, cancelledRecords)
-            hasBackflow = true;
-            return
+        task = backflow_schedule_task( ...
+            row, cancelledRecords, 'machine', machineIdx, rowIdx);
+        if ~isempty(task)
+            report.machineBackflowTasks(end + 1) = task;
         end
     end
 end
 
 if ~isfield(schedule, 'AGVTable')
+    report.hasBackflow = ~isempty(report.machineBackflowTasks);
     return
 end
 
@@ -348,16 +417,20 @@ for agvIdx = 1:numel(schedule.AGVTable)
     rows = schedule.AGVTable{agvIdx};
     for rowIdx = 1:numel(rows)
         row = rows(rowIdx);
-        if is_backflow_schedule_block(row, cancelledRecords)
-            hasBackflow = true;
-            return
+        task = backflow_schedule_task( ...
+            row, cancelledRecords, 'agv', agvIdx, rowIdx);
+        if ~isempty(task)
+            report.agvBackflowTasks(end + 1) = task;
         end
     end
 end
+report.hasBackflow = ~isempty(report.machineBackflowTasks) || ...
+    ~isempty(report.agvBackflowTasks);
 end
 
-function isBackflow = is_backflow_schedule_block(row, cancelledRecords)
-isBackflow = false;
+function task = backflow_schedule_task( ...
+    row, cancelledRecords, resourceType, resourceId, blockIndex)
+task = backflow_task_template([]);
 if ~isfield(row, 'job') || ~isfield(row, 'end') || row.job <= 0
     return
 end
@@ -365,8 +438,41 @@ end
 for i = 1:numel(cancelledRecords)
     record = cancelledRecords(i);
     if row.job == record.job_id && row.end > record.cancel_time
-        isBackflow = true;
+        task = backflow_task_template(0);
+        task.resource_type = resourceType;
+        task.resource_id = resourceId;
+        task.block_index = blockIndex;
+        task.event_id = record.event_id;
+        task.job_id = row.job;
+        task.operation_id = read_block_field(row, 'opera', NaN);
+        task.start_time = read_block_field(row, 'start', NaN);
+        task.end_time = row.end;
+        task.cancel_time = record.cancel_time;
         return
     end
+end
+end
+
+function task = backflow_task_template(initialValue)
+task = struct();
+task.resource_type = '';
+task.resource_id = initialValue;
+task.block_index = initialValue;
+task.event_id = initialValue;
+task.job_id = initialValue;
+task.operation_id = initialValue;
+task.start_time = initialValue;
+task.end_time = initialValue;
+task.cancel_time = initialValue;
+if isempty(initialValue)
+    task = task([]);
+end
+end
+
+function value = read_block_field(row, fieldName, defaultValue)
+if isfield(row, fieldName)
+    value = row.(fieldName);
+else
+    value = defaultValue;
 end
 end
