@@ -560,6 +560,39 @@ scripts/run_order_cancellation_hybrid_policy_smoke.m
 3. 能输出混合策略选择原因。
 4. 不做正式大规模实验。
 
+H7 实现结果：
+
+已新增：
+
+```text
+scripts/run_order_cancellation_hybrid_policy_smoke.m
+```
+
+运行入口：
+
+```matlab
+run('scripts/run_order_cancellation_hybrid_policy_smoke.m')
+```
+
+脚本流程：
+
+1. 读取 `data_sample/Mk01.fjs`。
+2. 构造 Mk01 样例 baseline schedule。
+3. 创建订单取消事件。
+4. 调用阶段 B 提取取消状态。
+5. 调用阶段 C 构造局部修复候选。
+6. 调用阶段 D 构造完全重调度候选。
+7. 调用阶段 E 评价两个候选。
+8. 调用阶段 H 输出混合策略选择。
+9. 打印 `decision.selected_strategy`、`decision.reason` 和阈值触发结果。
+
+H7 边界：
+
+1. 脚本不写 `outputs/`。
+2. 脚本不运行正式多场景实验。
+3. 脚本不启动 NSGA-II 长搜索。
+4. 脚本只用于验证 H4 混合策略在 Mk01 样例链路上能跑通。
+
 ### Step H8：阶段 H 工作记录或项目报告
 
 目标：阶段 H 完成后只保留一个主文档。
