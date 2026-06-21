@@ -196,3 +196,44 @@ Step G2 验收状态：
 ```text
 Step G3：定义场景结构
 ```
+
+## 9. Step G3：场景结构
+
+场景结构契约已新增：
+
+```text
+docs/00_system_overview/stage_g_scenario_structure_contract.md
+```
+
+每个场景必须包含：
+
+```matlab
+scenario.scenario_id
+scenario.dataset
+scenario.seed
+scenario.time_window
+scenario.job_category
+scenario.cancel.job_id
+scenario.cancel.cancel_time
+scenario.cancel.policy
+scenario.cancel_time_ratio
+scenario.notes
+```
+
+Step G3 验收状态：
+
+1. 已定义 `scenario_id` 唯一编号规则。
+2. 已定义 `dataset`、`time_window`、`job_category` 和 `seed` 追溯字段。
+3. 已定义 `cancel.job_id`、`cancel.cancel_time` 和 `cancel.policy`。
+4. 已定义 `cancel_time_ratio` 的含义。
+5. 已定义 `notes` 用于记录降级或跳过原因。
+6. 已说明关键路径无法稳定判断时不强行伪造。
+7. 本步骤未运行 MATLAB。
+8. 本步骤未生成 `outputs/`。
+9. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G4：实现场景库生成函数
+```

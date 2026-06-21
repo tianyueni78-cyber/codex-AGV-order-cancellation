@@ -220,6 +220,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 F 项目报告](docs/00_system_overview/stage_f_project_report.md) | 阶段 F 小规模实验的真实输出、汇总指标、第一版结论、局限和后续建议 |
 | [阶段 G Step G1 范围确认](docs/00_system_overview/stage_g_scope_contract.md) | 阶段 G 的 G-A 场景库生成、G-B 场景库实验、运行边界和禁止项 |
 | [阶段 G 场景库配置](configs/order_cancellation_scenario_library.yaml) | 阶段 G 场景库的数据集、取消时刻、工件类别、随机种子和输出目录配置 |
+| [阶段 G Step G3 场景结构契约](docs/00_system_overview/stage_g_scenario_structure_contract.md) | 阶段 G 每个取消场景的字段、唯一编号、cancel 结构和可追溯规则 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
 | [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
 
