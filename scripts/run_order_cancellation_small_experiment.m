@@ -65,7 +65,7 @@ for scenarioIdx = 1:numel(experimentConfig.scenarios)
         result = run_order_cancellation_scenario( ...
             problem, machineData, agvData, baselineSchedule, ...
             scenario, seed, runConfig);
-        results(end + 1) = remove_details(result);
+        results(end + 1) = make_result_row(result);
     end
 end
 end
@@ -383,11 +383,56 @@ scenario.name = '';
 scenario.cancel_time_ratio = [];
 end
 
-function row = remove_details(result)
-row = result;
-if isfield(row, 'details')
-    row = rmfield(row, 'details');
+function row = make_result_row(result)
+row = empty_result_row();
+fieldNames = fieldnames(row);
+for i = 1:numel(fieldNames)
+    fieldName = fieldNames{i};
+    if isfield(result, fieldName)
+        row.(fieldName) = result.(fieldName);
+    end
 end
+end
+
+function row = empty_result_row()
+row = struct();
+row.scenario_name = '';
+row.seed = NaN;
+row.cancel_job_id = NaN;
+row.cancel_time = NaN;
+row.cancel_policy = '';
+row.completed_operations = 0;
+row.cancelled_unfinished_operations = 0;
+row.remaining_unfinished_operations = 0;
+row.local_candidate_isFeasible = false;
+row.complete_candidate_isFeasible = false;
+row.local_machine_check_isFeasible = false;
+row.local_agv_check_isFeasible = false;
+row.local_job_sequence_check_isFeasible = false;
+row.complete_machine_check_isFeasible = false;
+row.complete_agv_check_isFeasible = false;
+row.complete_job_sequence_check_isFeasible = false;
+row.complete_frozen_check_isFeasible = false;
+row.complete_cancelled_exclusion_check_isFeasible = false;
+row.local_rejectedReasons = {};
+row.complete_rejectedReasons = {};
+row.local_error_count = 0;
+row.complete_error_count = 0;
+row.local_isFeasible = false;
+row.complete_isFeasible = false;
+row.local_Cmax_delta = NaN;
+row.complete_Cmax_delta = NaN;
+row.local_SD = NaN;
+row.complete_SD = NaN;
+row.local_TD = NaN;
+row.complete_TD = NaN;
+row.local_energy_delta = NaN;
+row.complete_energy_delta = NaN;
+row.local_Y = NaN;
+row.complete_Y = NaN;
+row.selected_strategy = '';
+row.selected_reason = '';
+row.selected_Y = NaN;
 end
 
 function machineData = build_sample_machine_data(machineNum)
