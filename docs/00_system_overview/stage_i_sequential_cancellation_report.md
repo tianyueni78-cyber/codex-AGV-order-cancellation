@@ -163,7 +163,47 @@ Step I3 完成时应满足：
 - 重复取消同一订单被拒绝并记录为 unsupported。
 - 事件排序稳定可复现。
 
-## 8. Step I1 验收标准
+## 8. Step I4：连续取消主流程函数
+
+阶段 I 新增连续取消主流程函数：
+
+```text
+src/cancellation/run_sequential_order_cancellations.m
+```
+
+建议调用方式：
+
+```matlab
+result = run_sequential_order_cancellations( ...
+    problem, machineData, agvData, initialSchedule, cancelEvents, config)
+```
+
+主流程：
+
+1. 调用 `validate_sequential_cancellation_events` 校验并排序 `cancelEvents`。
+2. 设置 `currentSchedule = initialSchedule`。
+3. 设置 `cancelledJobSet = []`。
+4. 按排序后的事件逐个处理：
+   - 检查当前 `job_id` 是否已经取消。
+   - 基于 `currentSchedule` 调用阶段 B 状态提取。
+   - 调用阶段 C 构造局部修复候选。
+   - 调用阶段 D 构造完全重调度候选。
+   - 调用阶段 E 评价两个候选。
+   - 调用阶段 H 混合策略选择。
+   - 如果选择成功，将 `decision.selected_candidate` 作为下一轮 `currentSchedule`。
+   - 将当前取消订单加入 `cancelledJobSet`。
+5. 返回每一轮 `event_results`、`finalSchedule` 和 `cancelledJobSet`。
+
+第一版完全重调度候选复用当前项目的 first-choice chromosome 构造方式，不启动 NSGA-II 正式搜索。
+
+Step I4 完成时应满足：
+
+- 每次事件后都有局部修复、完全重调度和最终选择记录。
+- 后一次状态提取基于前一次选择后的计划。
+- 早先取消订单不会在后续计划中回流。
+- 函数不写 `outputs/`，只做函数级逻辑。
+
+## 9. Step I1 验收标准
 
 Step I1 完成时应满足：
 
@@ -174,7 +214,7 @@ Step I1 完成时应满足：
 - 明确后续轮次使用上一轮最终选择计划作为新基线。
 - 明确阶段 I 不新增机器故障、新订单插入或强化学习。
 
-## 9. Step I2 验收标准
+## 10. Step I2 验收标准
 
 Step I2 完成时应满足：
 
@@ -185,13 +225,13 @@ Step I2 完成时应满足：
 - 已明确 `cancel_time` 非负。
 - 已明确 `policy` 当前只支持 `cancel_unstarted_operations_only`。
 
-## 10. 后续步骤入口
+## 11. 后续步骤入口
 
-下一步进入 Step I4：实现连续取消主流程函数。
+下一步进入 Step I5：维护已取消订单集合。
 
 建议重点确认：
 
-- 主流程如何把 `sortedEvents` 逐个送入阶段 B-H。
-- 每轮最终计划如何更新为下一轮 `currentSchedule`。
-- 每轮结果结构需要记录哪些字段。
+- 是否把已取消订单回流检查扩展到 AGV 运输任务。
+- 是否单独输出 `cancelledJobSet` 的变化记录。
+- 是否为回流检查增加独立测试。
 - unsupported 后是停止后续事件，还是继续尝试处理后续事件。
