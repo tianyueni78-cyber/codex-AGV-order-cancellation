@@ -193,7 +193,50 @@ run('scripts/run_order_cancellation_hybrid_policy_smoke.m')
 
 该 smoke 不写 `outputs/`，不做正式多随机种子实验。
 
-当前状态：入口已完成，MATLAB 运行输出等待用户执行后补充到本报告。
+### Smoke 结果
+
+用户已在 MATLAB 中运行：
+
+```matlab
+run('scripts/run_order_cancellation_hybrid_policy_smoke.m')
+```
+
+关键输出如下：
+
+| 指标 | 局部修复 | 完全重调度 |
+|---|---:|---:|
+| `isFeasible` | 1 | 1 |
+| `Cmax_delta` | 0.000000 | -2.000000 |
+| `SD` | 0.000000 | 3.333333 |
+| `TD` | 0.000000 | 0.000000 |
+| `energy_delta` | -11.600000 | -13.633333 |
+| `Y` | 0.500000 | 0.250000 |
+
+混合策略输出：
+
+```text
+decision.isSelected: 1
+decision.selected_strategy: complete_rescheduling
+decision.reason: complete_better_Y
+decision.triggered_complete_rescheduling: 1
+decision.threshold_report.cmax_delta_triggered: 0
+decision.threshold_report.energy_delta_triggered: 0
+decision.threshold_report.idle_waste_triggered: 0
+error_count: 0
+rejected_reason_count: 0
+```
+
+结果说明：
+
+- 局部修复和完全重调度两个候选都可行。
+- 完全重调度的 `Cmax_delta = -2.000000`，说明相对原正常调度最大完工时间减少 2。
+- 完全重调度的 `energy_delta = -13.633333`，比局部修复的 `-11.600000` 节能幅度更大。
+- 完全重调度引入了 `SD = 3.333333` 的机器工序扰动，局部修复的扰动为 0。
+- 两者 `TD` 都为 0，说明该样例下 AGV 运输开始时间扰动没有增加。
+- 三个阈值触发项均为 0，说明本次不是由阈值强制触发完全重调度。
+- 最终选择完全重调度的直接原因是 `complete_better_Y`，即阶段 E 综合评价中完全重调度的 `Y = 0.250000` 小于局部修复的 `Y = 0.500000`。
+
+因此，阶段 H 在该 smoke 样例中的含义是：当两个候选都可行时，混合策略能够继续复用阶段 E 的 `Y` 选择规则，并清楚记录选择原因。
 
 ## 10. 局限
 
