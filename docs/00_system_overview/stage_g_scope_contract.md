@@ -562,3 +562,45 @@ Step G9 验收状态：
 ```text
 Step G10：场景库实验测试
 ```
+
+## 16. Step G10：场景库实验汇总测试
+
+已新增：
+
+```text
+tests/test_order_cancellation_scenario_library_experiment_summary.m
+```
+
+运行入口：
+
+```matlab
+run('tests/test_order_cancellation_scenario_library_experiment_summary.m')
+```
+
+测试内容：
+
+1. 构造最小 result 数据。
+2. 按 `time_window` 汇总正确。
+3. 按 `job_category` 汇总正确。
+4. 按 `seed` 汇总正确。
+5. 策略次数统计正确。
+6. 可行性类别统计正确。
+7. 不可行数量统计正确。
+8. 均值指标计算正确。
+
+Step G10 验收状态：
+
+1. 汇总测试入口已存在。
+2. 测试只调用 `summarize_order_cancellation_library_results`。
+3. 测试不运行场景库实验脚本。
+4. 测试不写 `outputs/`。
+5. 测试不运行调度实验或 NSGA-II。
+6. 本步骤未运行 MATLAB。
+7. 本步骤未生成 `outputs/`。
+8. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G11：写阶段 G 文档
+```
