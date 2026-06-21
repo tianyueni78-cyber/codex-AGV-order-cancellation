@@ -380,7 +380,47 @@ Step I8 完成时应满足：
 - 测试覆盖 unsupported 事件。
 - 测试不生成实验输出。
 
-## 13. Step I1 验收标准
+## 13. Step I9：样例 smoke 脚本
+
+阶段 I 新增样例 smoke 脚本：
+
+```text
+scripts/run_order_cancellation_sequential_smoke.m
+```
+
+运行入口：
+
+```matlab
+run('scripts/run_order_cancellation_sequential_smoke.m')
+```
+
+样例事件：
+
+```text
+cancelEvents(1): job_id = 2, cancel_time = 10
+cancelEvents(2): job_id = 3, cancel_time = 14
+```
+
+打印内容：
+
+- 每轮取消事件的 `event_id`、`job_id`、`cancel_time` 和 `policy`。
+- 每轮局部修复和完全重调度候选可行性。
+- 每轮最终选择策略和选择原因。
+- 每轮是否触发完全重调度。
+- 每轮是否 unsupported。
+- 每轮已取消订单是否回流。
+- 每轮最终计划机器、AGV 和工序顺序约束检查结果。
+
+Step I9 完成时应满足：
+
+- 能打印每轮取消事件。
+- 能打印每轮局部修复和完全重调度可行性。
+- 能打印每轮最终选择策略和原因。
+- 能打印最终计划约束检查结果。
+- 不写 `outputs/`。
+- 不做正式多随机种子实验。
+
+## 14. Step I1 验收标准
 
 Step I1 完成时应满足：
 
@@ -391,7 +431,7 @@ Step I1 完成时应满足：
 - 明确后续轮次使用上一轮最终选择计划作为新基线。
 - 明确阶段 I 不新增机器故障、新订单插入或强化学习。
 
-## 14. Step I2 验收标准
+## 15. Step I2 验收标准
 
 Step I2 完成时应满足：
 
@@ -402,13 +442,12 @@ Step I2 完成时应满足：
 - 已明确 `cancel_time` 非负。
 - 已明确 `policy` 当前只支持 `cancel_unstarted_operations_only`。
 
-## 15. 后续步骤入口
+## 16. 后续步骤入口
 
-下一步进入 Step I9：样例 smoke 脚本。
+下一步进入 Step I10：阶段 I 项目报告整理。
 
 建议重点确认：
 
-- smoke 是否使用 `cancelEvents(1): job_id = 2, cancel_time = 10`。
-- smoke 是否使用 `cancelEvents(2): job_id = 3, cancel_time = 14`。
-- smoke 是否只打印结果、不写 `outputs/`。
-- smoke 是否打印最终计划约束检查结果。
+- 用户运行测试和 smoke 后，需要把输出结果补进阶段 I 主报告。
+- 报告是否汇总新增文件清单、测试入口、smoke 入口和 smoke 输出含义。
+- README 是否仍然只挂阶段 I 一个主入口。
