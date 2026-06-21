@@ -134,3 +134,65 @@ Step G2：定义场景库配置
 ```text
 configs/order_cancellation_scenario_library.yaml
 ```
+
+## 8. Step G2：场景库配置
+
+已新增：
+
+```text
+configs/order_cancellation_scenario_library.yaml
+```
+
+当前配置：
+
+```yaml
+datasets:
+  - data_sample/Mk01.fjs
+
+cancel_policy: cancel_unstarted_operations_only
+
+time_windows:
+  - name: early
+    cancel_time_ratio: 0.25
+  - name: middle
+    cancel_time_ratio: 0.50
+  - name: late
+    cancel_time_ratio: 0.75
+
+job_categories:
+  - random
+  - short
+  - long
+  - critical
+  - noncritical
+
+seeds: [1, 2, 3]
+
+output_base_dir: outputs/order_cancellation_scenario_library
+```
+
+配置说明：
+
+1. `datasets` 使用相对路径，当前先从 `data_sample/Mk01.fjs` 开始。
+2. `cancel_policy` 延续阶段 B-F 的 `cancel_unstarted_operations_only`。
+3. `time_windows` 覆盖 early、middle、late 三个取消时刻。
+4. `job_categories` 覆盖 random、short、long、critical、noncritical。
+5. `seeds` 明确使用 `[1, 2, 3]`。
+6. `output_base_dir` 使用相对路径，供 G-B 场景库实验脚本写入 timestamp 输出目录。
+
+Step G2 验收状态：
+
+1. 数据集路径是相对路径。
+2. 取消时刻覆盖 early、middle、late。
+3. 工件类别覆盖 random、short、long、critical、noncritical。
+4. 多 seed 已明确。
+5. 输出目录是相对路径。
+6. 本步骤未运行 MATLAB。
+7. 本步骤未生成 `outputs/`。
+8. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G3：定义场景结构
+```

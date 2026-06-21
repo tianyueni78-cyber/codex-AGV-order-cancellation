@@ -1,0 +1,23 @@
+datasets:
+  - data_sample/Mk01.fjs
+
+cancel_policy: cancel_unstarted_operations_only
+
+time_windows:
+  - name: early
+    cancel_time_ratio: 0.25
+  - name: middle
+    cancel_time_ratio: 0.50
+  - name: late
+    cancel_time_ratio: 0.75
+
+job_categories:
+  - random
+  - short
+  - long
+  - critical
+  - noncritical
+
+seeds: [1, 2, 3]
+
+output_base_dir: outputs/order_cancellation_scenario_library
