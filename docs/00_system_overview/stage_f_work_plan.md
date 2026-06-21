@@ -463,6 +463,20 @@ run('scripts/run_order_cancellation_small_experiment.m')
 3. 不声称全局最优。
 4. 不把单个 smoke 结果当作研究结论。
 
+已新增分析模板：
+
+```text
+docs/00_system_overview/stage_f_result_analysis_template.md
+```
+
+Step F9 当前状态：
+
+1. 分析模板已建立。
+2. 模板规定必须读取 `scenario_results.csv`、`seed_results.csv` 和 `selected_strategy_counts.csv`。
+3. 模板覆盖策略倾向、`Cmax`、`SD`、`TD`、能耗和不可行约束来源。
+4. 由于 Step F8 尚未确认运行，当前不能填写真实实验结论。
+5. 本步骤未运行 MATLAB，未生成 `outputs/`，未修改 `raw_code/`。
+
 ## 13. Step F10：阶段 F 工作记录
 
 目标：记录阶段 F 做了什么、输出在哪里、结果说明和局限。
