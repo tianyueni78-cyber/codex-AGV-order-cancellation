@@ -4,6 +4,125 @@
 
 阶段 I 不加入机器故障、新订单插入、连续加工抢占或强化学习。
 
+## 0. 项目报告总览
+
+本节是阶段 I 的项目报告摘要；后面的 Step I1-I9 保留为可追溯的实现记录。阶段 I 的核心不是并行讨论很多新扰动，而是在阶段 B-H 已经闭环的基础上，验证“订单取消可以连续发生时，系统能否按时间顺序重复处理”。
+
+### 0.1 阶段 I 目标
+
+阶段 I 要解决的问题是多订单连续取消：
+
+- 支持至少 2 个取消事件按 `cancel_time` 升序执行。
+- 每次事件后都生成局部修复候选、完全重调度候选和混合策略最终选择。
+- 后一次事件的状态提取基于前一次最终选择计划。
+- 已取消订单的未完成机器工序和 AGV 任务不能在后续计划中回流。
+- 每轮计划必须通过约束检查，或明确记录不可行/unsupported 原因。
+
+### 0.2 输入契约
+
+阶段 I 主流程接收：
+
+```matlab
+problem
+machineData
+agvData
+initialSchedule
+cancelEvents
+config
+```
+
+第一轮以 `initialSchedule` 为基线；后续轮次以上一轮最终选择的 `machineTable` 和 `AGVTable` 作为新基线。
+
+### 0.3 连续取消事件结构
+
+每个取消事件至少包含：
+
+```matlab
+cancelEvents(i).event_id
+cancelEvents(i).job_id
+cancelEvents(i).cancel_time
+cancelEvents(i).policy
+```
+
+第一版只支持 `cancel_unstarted_operations_only`。相同 `job_id` 重复取消会被拒绝或记录为 unsupported，避免同一订单被重复处理。
+
+### 0.4 工作流程
+
+阶段 I 对每个取消事件重复调用已有链路：
+
+1. 校验并按 `cancel_time` 排序取消事件。
+2. 设置 `currentSchedule = initialSchedule`。
+3. 基于 `currentSchedule` 调用阶段 B 提取取消状态。
+4. 调用阶段 C 生成局部修复候选。
+5. 调用阶段 D 生成完全重调度候选。
+6. 调用阶段 E 评价两个候选。
+7. 调用阶段 H 混合策略选择最终计划。
+8. 把最终计划更新为下一轮 `currentSchedule`。
+9. 把当前 `job_id` 加入已取消订单集合，防止后续回流。
+
+### 0.5 已取消订单不回流规则
+
+阶段 I 维护 `cancelledJobSet`。每轮结束后检查：
+
+- 已取消订单未完成机器工序不能出现在后续 `machineTable`。
+- 已取消订单未执行 AGV 任务不能出现在后续 `AGVTable`。
+- 如果发现回流，当前轮结果标记为不可行，并记录原因。
+
+已完成历史任务保留，因为它们代表取消前已经发生的真实加工和运输。
+
+### 0.6 unsupported 处理规则
+
+如果某次取消命中正在加工工序或正在运输任务，第一版不做抢占、不做工序中断、不做 AGV 中途改派。该事件被记录为 unsupported；默认建议停止后续事件，避免在不完整状态上继续推导。
+
+### 0.7 新增文件清单
+
+| 文件 | 用途 |
+|---|---|
+| `src/cancellation/validate_sequential_cancellation_events.m` | 校验连续取消事件列表 |
+| `src/cancellation/run_sequential_order_cancellations.m` | 连续取消主流程 |
+| `tests/test_order_cancellation_sequential_event_validation.m` | 连续取消事件校验测试 |
+| `tests/test_order_cancellation_sequential_events.m` | 连续取消主流程测试 |
+| `scripts/run_order_cancellation_sequential_smoke.m` | 样例数据 smoke 脚本 |
+| `docs/00_system_overview/stage_i_sequential_cancellation_report.md` | 阶段 I 唯一主报告 |
+
+### 0.8 测试入口和结果
+
+测试入口：
+
+```matlab
+run('tests/test_order_cancellation_sequential_event_validation.m')
+run('tests/test_order_cancellation_sequential_events.m')
+```
+
+已收到的测试输出：
+
+```text
+test_order_cancellation_sequential_events passed
+>>
+```
+
+该结果说明：最小构造数据下，连续取消主流程已经能通过核心断言，包括按时间处理事件、每轮产生最终选择、后续轮次基于上一轮最终计划、已取消订单不回流，以及最终约束检查通过。
+
+### 0.9 Smoke 入口和结果
+
+Smoke 入口：
+
+```matlab
+run('scripts/run_order_cancellation_sequential_smoke.m')
+```
+
+当前报告尚未写入 smoke 输出，因为还没有收到该脚本的实际运行结果。收到输出后，需要补充每轮取消事件、局部修复可行性、完全重调度可行性、混合策略选择原因和最终计划约束检查结果。
+
+### 0.10 局限
+
+阶段 I 只处理连续订单取消，不处理新订单插入。它也不加入机器故障、AGV 故障、强化学习或全局最优证明。
+
+当前连续取消仍建立在第一版策略 `cancel_unstarted_operations_only` 上；正在加工和正在运输的取消先作为 unsupported 处理。阶段 I 的目标是验证连续取消链路可运行，不是给出论文级最终算法结论。
+
+### 0.11 阶段 J 入口
+
+阶段 J 建议进入“订单变更统一框架”：把订单取消和新订单插入都抽象为任务集合变化。阶段 I 的输出可以作为取消侧的基础，但阶段 J 才开始讨论新订单插入；阶段 I 本身不实现新订单插入。
+
 ## 1. 阶段 I 目标
 
 阶段 I 的目标是：
