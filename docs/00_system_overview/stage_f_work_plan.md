@@ -391,7 +391,7 @@ Step F6 静态验收结果：
 
 目标：先用最小构造数据验证汇总逻辑，不跑正式实验。
 
-建议新增：
+已新增：
 
 ```text
 tests/test_order_cancellation_small_experiment_summary.m
@@ -410,6 +410,19 @@ tests/test_order_cancellation_small_experiment_summary.m
 1. 测试不写 `outputs/`。
 2. 测试不运行完整 NSGA-II。
 3. 测试只验证汇总逻辑。
+
+Step F7 静态验收结果：
+
+1. `src/cancellation/summarize_order_cancellation_results.m` 已新增为纯汇总函数。
+2. `tests/test_order_cancellation_small_experiment_summary.m` 已新增。
+3. 测试使用最小构造数据覆盖三个场景识别。
+4. 测试使用多个 seed 行覆盖多随机种子汇总。
+5. 测试覆盖可行候选数量统计。
+6. 测试覆盖策略选择次数统计。
+7. 测试覆盖均值指标计算。
+8. 测试不写 `outputs/`。
+9. 测试不调用完整 NSGA-II。
+10. 本步骤未运行 MATLAB，未生成 `outputs/`，未修改 `raw_code/`。
 
 ## 11. Step F8：运行小规模实验
 
