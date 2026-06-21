@@ -224,6 +224,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 G 场景库生成函数](src/cancellation/build_order_cancellation_scenarios.m) | 阶段 G 根据配置、基线 Cmax 和工件类别生成可复现订单取消场景 |
 | [阶段 G 场景库静态测试](tests/test_order_cancellation_scenario_library.m) | 阶段 G 验证场景生成、字段完整性、统计数量和随机 job 可复现性的测试入口 |
 | [阶段 G 单场景库实验函数](src/cancellation/run_order_cancellation_library_scenario.m) | 阶段 G 将一个场景库 scenario 适配到阶段 B-E 链路并返回单行实验结果 |
+| [阶段 G 场景库实验脚本](scripts/run_order_cancellation_scenario_library_experiment.m) | 阶段 G 批量运行场景库、汇总结果并写入 `outputs/order_cancellation_scenario_library/<timestamp>/` |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
 | [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
 

@@ -427,3 +427,71 @@ Step G7 验收状态：
 ```text
 Step G8：实现场景库实验脚本
 ```
+
+## 14. Step G8：场景库实验脚本
+
+已新增：
+
+```text
+scripts/run_order_cancellation_scenario_library_experiment.m
+```
+
+运行入口：
+
+```matlab
+run('scripts/run_order_cancellation_scenario_library_experiment.m')
+```
+
+脚本功能：
+
+1. 读取 `configs/order_cancellation_scenario_library.yaml`。
+2. 遍历配置中的 `datasets`。
+3. 为每个 dataset 读取 `problem` 并构造样例 `machineData`、`agvData` 和 `baselineSchedule`。
+4. 调用 `build_order_cancellation_scenarios` 生成场景库。
+5. 遍历所有场景。
+6. 对每个场景调用 `run_order_cancellation_library_scenario`，复用阶段 B-E 链路。
+7. 汇总结果。
+8. 写入 timestamp 输出目录。
+
+输出目录：
+
+```text
+outputs/order_cancellation_scenario_library/<timestamp>/
+```
+
+输出文件：
+
+```text
+scenario_library.csv
+seed_results.csv
+scenario_summary.csv
+category_summary.csv
+strategy_counts.csv
+summary.json
+experiment_notes.md
+```
+
+边界说明：
+
+1. 该脚本会写入 `outputs/`，运行前需要确认。
+2. 脚本使用 timestamp 子目录，不覆盖旧输出。
+3. 脚本不修改 `raw_code/`。
+4. 脚本第一版复用阶段 D 当前候选生成方式，不启动正式 NSGA-II 长实验。
+5. 单个场景报错时会写入失败行，不中断整个场景库实验。
+
+Step G8 验收状态：
+
+1. 场景库实验脚本已存在。
+2. 每个场景都会生成实验结果行，包含局部修复和完全重调度字段。
+3. 每个场景结果会记录机器、AGV、工序顺序、冻结一致性和取消任务排除检查字段。
+4. 输出会写入 `outputs/order_cancellation_scenario_library/<timestamp>/`。
+5. 输出不会覆盖旧 timestamp 目录。
+6. 本步骤未运行 MATLAB。
+7. 本步骤未生成新的 `outputs/`。
+8. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G9：场景库实验汇总函数
+```
