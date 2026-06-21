@@ -336,3 +336,45 @@ Step G5 验收状态：
 ```text
 Step G6：场景库静态测试
 ```
+
+## 12. Step G6：场景库静态测试
+
+已新增：
+
+```text
+tests/test_order_cancellation_scenario_library.m
+```
+
+运行入口：
+
+```matlab
+run('tests/test_order_cancellation_scenario_library.m')
+```
+
+测试内容：
+
+1. 能生成场景。
+2. 每个场景有 `scenario_id`。
+3. 每个场景有完整 `cancel` 字段。
+4. 场景数量统计正确。
+5. `random` job 对 seed 可复现。
+6. `short`、`long`、`critical` 和 `noncritical` 分类结果符合最小构造 baseline。
+7. 不写 `outputs/`。
+8. 不运行 NSGA-II。
+
+Step G6 验收状态：
+
+1. 测试入口已存在。
+2. 测试使用最小构造 `problem` 和 `baselineSchedule`。
+3. 测试不依赖完整实验。
+4. 测试不写 `outputs/`。
+5. 测试不调用局部修复、完全重调度或 NSGA-II。
+6. 本步骤未运行 MATLAB。
+7. 本步骤未生成 `outputs/`。
+8. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G7：实现单场景库实验函数
+```
