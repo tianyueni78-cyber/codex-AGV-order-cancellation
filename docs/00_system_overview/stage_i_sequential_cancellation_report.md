@@ -226,6 +226,8 @@ cancelledRecords
 5. 出现回流的候选被标记为不可行，`candidate.report.rejectedReasons` 增加 `cancelled_job_backflow_detected`。
 6. 混合策略选中最终候选后，主流程再次检查选中计划；如果仍有回流，则当前事件结果标记为不可行，并且不更新下一轮 `currentSchedule`。
 
+候选级回流只淘汰对应候选，不会直接判定整轮事件失败；只有最终选中的计划仍然存在回流时，当前事件才会失败。
+
 这个规则允许已取消订单在取消时刻之前已经完成的历史任务继续保留；只有取消时刻之后仍然存在的机器/AGV任务才视为回流。
 
 Step I5 完成时应满足：

@@ -119,11 +119,7 @@ eventResult = build_event_result( ...
     completeBackflowReport);
 
 nextSchedule = currentSchedule;
-if eventResult.cancelled_job_backflow_detected
-    eventResult.decision_isSelected = false;
-    eventResult.selected_strategy = '';
-    eventResult.decision_reason = 'cancelled_job_backflow_detected';
-elseif decision.isSelected
+if decision.isSelected
     nextSchedule = decision.selected_candidate;
     selectedBackflowReport = check_cancelled_job_backflow( ...
         nextSchedule, cancelledRecordsForEvent, 'selected_candidate');
@@ -358,8 +354,7 @@ eventResult.local_candidate_backflow_detected = ...
 eventResult.complete_candidate_backflow_detected = ...
     completeBackflowReport.hasBackflow;
 eventResult.selected_candidate_backflow_detected = false;
-eventResult.cancelled_job_backflow_detected = ...
-    localBackflowReport.hasBackflow || completeBackflowReport.hasBackflow;
+eventResult.cancelled_job_backflow_detected = false;
 eventResult.details = struct();
 eventResult.details.state = state;
 eventResult.details.localCandidate = localCandidate;
