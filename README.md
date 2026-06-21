@@ -223,6 +223,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 F：小规模实验项目报告](docs/00_system_overview/stage_f_project_report.md) | 早期/中期/后期取消实验、汇总指标、结论、局限和后续建议 |
 | [阶段 G：场景库项目报告](docs/00_system_overview/stage_g_project_report.md) | 场景库配置、批量实验、真实输出、汇总结果、结论和阶段 H 入口 |
 | [阶段 H：混合修复策略报告](docs/00_system_overview/stage_h_hybrid_policy_report.md) | 阶段 H 的配置、触发规则、测试入口、smoke 入口、局限和阶段 I 入口 |
+| [阶段 I：多订单连续取消报告](docs/00_system_overview/stage_i_sequential_cancellation_report.md) | 阶段 I 的输入契约、连续取消基线更新规则、边界和后续步骤 |
 | [阶段 G-N 后续路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 从第一版闭环走向更灵活订单取消调度的后续阶段 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 仓库目录和关键文件用途说明 |
 
