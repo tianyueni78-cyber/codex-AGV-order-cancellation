@@ -261,6 +261,34 @@ check_complete_rescheduling_candidate.m
 4. 每个完全重调度候选报告冻结一致性检查。
 5. 每个完全重调度候选报告取消任务排除检查。
 6. 不可行时写明 `rejectedReasons`。
+7. 不可行时保留 `errors` 计数。
+
+已在单场景结果中记录的检查字段：
+
+```text
+local_machine_check_isFeasible
+local_agv_check_isFeasible
+local_job_sequence_check_isFeasible
+complete_machine_check_isFeasible
+complete_agv_check_isFeasible
+complete_job_sequence_check_isFeasible
+complete_frozen_check_isFeasible
+complete_cancelled_exclusion_check_isFeasible
+local_rejectedReasons
+complete_rejectedReasons
+local_error_count
+complete_error_count
+```
+
+Step F4 静态验收结果：
+
+1. 局部修复候选的机器冲突检查结果已从 `localCandidate.report.machineConflictCheck` 提取。
+2. 局部修复候选的 AGV 冲突检查结果已从 `localCandidate.report.agvConflictCheck` 提取。
+3. 局部修复候选的工件工序顺序检查结果已从 `localCandidate.report.jobSequenceCheck` 提取。
+4. 完全重调度候选的机器、AGV、工序顺序、冻结一致性和取消任务排除检查结果已从 `completeCandidate.report.completeFeasibilityCheck` 提取。
+5. 单场景结果已记录 `local_rejectedReasons` 和 `complete_rejectedReasons`。
+6. 单场景结果已记录 `local_error_count` 和 `complete_error_count`。
+7. 本步骤未运行 MATLAB，未生成 `outputs/`，未修改 `raw_code/`。
 
 ## 8. Step F5：实现小规模实验脚本
 
