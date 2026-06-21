@@ -53,7 +53,7 @@ fprintf('run_summary_txt: %s\n', fullfile(outputDir, 'run_summary.txt'));
 
 function results = run_scenarios( ...
     problem, machineData, agvData, baselineSchedule, experimentConfig)
-results = struct([]);
+results = repmat(empty_result_row(), 1, 0);
 
 runConfig = struct();
 runConfig.cancel_policy = experimentConfig.cancel_policy;
