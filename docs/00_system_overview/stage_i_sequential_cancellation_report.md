@@ -290,7 +290,58 @@ Step I6 完成时应满足：
 - 最终选择计划也要通过机器、AGV 和工序顺序检查。
 - 不可行时记录 `reason`，不静默跳过。
 
-## 11. Step I1 验收标准
+## 11. Step I7：unsupported 情况处理
+
+阶段 I 第一版遇到正在加工或正在运输取消时，不扩展抢占逻辑。
+
+判断规则：
+
+```text
+state.has_unsupported_operations == true
+state.has_unsupported_agv_tasks == true
+```
+
+如果任一条件成立，当前事件直接标记为 unsupported：
+
+```text
+eventResult.isUnsupported = true
+eventResult.decision_isSelected = false
+eventResult.unsupported_reason
+eventResult.stop_sequence
+```
+
+可能的 `unsupported_reason`：
+
+```text
+unsupported_processing_state
+unsupported_agv_state
+unsupported_processing_and_agv_state
+```
+
+第一版不做：
+
+- 工序中断。
+- 加工抢占。
+- AGV 中途卸载。
+- AGV 中途改派。
+
+后续是否继续执行由 config 明确：
+
+```matlab
+config.sequential_cancellation.stop_on_unsupported
+```
+
+默认值为 `true`，即第一版遇到 unsupported 事件后停止后续取消事件。若后续显式设为 `false`，主流程会保留当前 `currentSchedule`，记录 unsupported 事件，并继续尝试后续事件。
+
+Step I7 完成时应满足：
+
+- unsupported 情况不会崩溃。
+- 结果中能说明是哪一轮事件 unsupported。
+- 结果中能说明 unsupported 原因。
+- 第一版默认停止后续事件。
+- 不做工序中断或 AGV 中途卸载/改派。
+
+## 12. Step I1 验收标准
 
 Step I1 完成时应满足：
 
@@ -301,7 +352,7 @@ Step I1 完成时应满足：
 - 明确后续轮次使用上一轮最终选择计划作为新基线。
 - 明确阶段 I 不新增机器故障、新订单插入或强化学习。
 
-## 12. Step I2 验收标准
+## 13. Step I2 验收标准
 
 Step I2 完成时应满足：
 
@@ -312,13 +363,13 @@ Step I2 完成时应满足：
 - 已明确 `cancel_time` 非负。
 - 已明确 `policy` 当前只支持 `cancel_unstarted_operations_only`。
 
-## 13. 后续步骤入口
+## 14. 后续步骤入口
 
-下一步进入 Step I7：unsupported 情况处理。
+下一步进入 Step I8：连续取消单元测试。
 
 建议重点确认：
 
-- `state.has_unsupported_operations` 为 true 时是否立即停止后续事件。
-- `state.has_unsupported_agv_tasks` 为 true 时是否立即停止后续事件。
-- config 中 unsupported 后续行为字段如何命名。
-- unsupported 后是停止后续事件，还是继续尝试处理后续事件。
+- 测试是否覆盖两个取消事件按时间顺序执行。
+- 测试是否覆盖第二次状态提取基于第一次选择后的计划。
+- 测试是否覆盖已取消订单不回流。
+- 测试是否覆盖 unsupported 事件标记。

@@ -50,6 +50,8 @@ for i = 1:numel(sortedEvents)
     if eventResult.decision_isSelected
         cancelledJobSet(end + 1) = event.job_id;
         cancelledRecords(end + 1) = event;
+    elseif eventResult.isUnsupported && ~eventResult.stop_sequence
+        continue
     else
         break
     end
@@ -61,6 +63,8 @@ result.cancelledJobSet = cancelledJobSet;
 result.completed_event_count = numel(eventResults);
 result.isFeasible = ~isempty(eventResults) && ...
     all([eventResults.decision_isSelected]);
+result.report.unsupported_events = collect_unsupported_event_reports( ...
+    eventResults);
 result.report.isFeasible = result.isFeasible;
 end
 
@@ -71,6 +75,13 @@ cancel = create_order_cancellation_event( ...
     event.job_id, event.cancel_time, event.policy);
 
 state = extract_cancellation_state(problem, currentSchedule, cancel);
+if has_unsupported_state(state)
+    eventResult = unsupported_event_result( ...
+        event, state, cancelledRecords, config);
+    nextSchedule = currentSchedule;
+    return
+end
+
 localCandidate = build_local_repair_candidate( ...
     problem, currentSchedule, state, cancel);
 
@@ -196,6 +207,9 @@ eventResult.decision_isSelected = false;
 eventResult.selected_strategy = '';
 eventResult.decision_reason = '';
 eventResult.triggered_complete_rescheduling = false;
+eventResult.isUnsupported = false;
+eventResult.unsupported_reason = '';
+eventResult.stop_sequence = false;
 eventResult.local_candidate_backflow_detected = false;
 eventResult.complete_candidate_backflow_detected = false;
 eventResult.selected_candidate_backflow_detected = false;
@@ -214,6 +228,85 @@ eventResult.cancel_time = event.cancel_time;
 eventResult.policy = event.policy;
 eventResult.decision_reason = reason;
 eventResult.details = struct();
+end
+
+function eventResult = unsupported_event_result( ...
+    event, state, cancelledRecords, config)
+eventResult = event_result_template(0);
+eventResult.event_id = event.event_id;
+eventResult.job_id = event.job_id;
+eventResult.cancel_time = event.cancel_time;
+eventResult.policy = event.policy;
+eventResult.state_has_unsupported_operations = ...
+    state.has_unsupported_operations;
+eventResult.state_has_unsupported_agv_tasks = ...
+    state.has_unsupported_agv_tasks;
+eventResult.isUnsupported = true;
+eventResult.unsupported_reason = unsupported_reason_from_state(state);
+eventResult.decision_reason = eventResult.unsupported_reason;
+eventResult.stop_sequence = read_stop_on_unsupported_config(config);
+eventResult.details = struct();
+eventResult.details.state = state;
+eventResult.details.cancelledEventsBeforeEvent = cancelledRecords;
+eventResult.details.unsupported_operation_count = ...
+    numel(state.unsupported_operations);
+eventResult.details.unsupported_agv_task_count = ...
+    numel(state.unsupported_agv_tasks);
+end
+
+function reason = unsupported_reason_from_state(state)
+if state.has_unsupported_operations && state.has_unsupported_agv_tasks
+    reason = 'unsupported_processing_and_agv_state';
+elseif state.has_unsupported_operations
+    reason = 'unsupported_processing_state';
+elseif state.has_unsupported_agv_tasks
+    reason = 'unsupported_agv_state';
+else
+    reason = '';
+end
+end
+
+function hasUnsupported = has_unsupported_state(state)
+hasUnsupported = false;
+if isstruct(state) && isfield(state, 'has_unsupported_operations') && ...
+        state.has_unsupported_operations
+    hasUnsupported = true;
+end
+if isstruct(state) && isfield(state, 'has_unsupported_agv_tasks') && ...
+        state.has_unsupported_agv_tasks
+    hasUnsupported = true;
+end
+end
+
+function stopOnUnsupported = read_stop_on_unsupported_config(config)
+stopOnUnsupported = true;
+if isstruct(config) && isfield(config, 'sequential_cancellation') && ...
+        isstruct(config.sequential_cancellation) && ...
+        isfield(config.sequential_cancellation, 'stop_on_unsupported') && ...
+        islogical(config.sequential_cancellation.stop_on_unsupported) && ...
+        isscalar(config.sequential_cancellation.stop_on_unsupported)
+    stopOnUnsupported = config.sequential_cancellation.stop_on_unsupported;
+end
+end
+
+function unsupportedEvents = collect_unsupported_event_reports(eventResults)
+unsupportedEvents = struct( ...
+    'event_id', {}, ...
+    'job_id', {}, ...
+    'cancel_time', {}, ...
+    'reason', {}, ...
+    'stop_sequence', {});
+for i = 1:numel(eventResults)
+    if eventResults(i).isUnsupported
+        record = struct();
+        record.event_id = eventResults(i).event_id;
+        record.job_id = eventResults(i).job_id;
+        record.cancel_time = eventResults(i).cancel_time;
+        record.reason = eventResults(i).unsupported_reason;
+        record.stop_sequence = eventResults(i).stop_sequence;
+        unsupportedEvents(end + 1) = record;
+    end
+end
 end
 
 function eventResult = build_event_result( ...
