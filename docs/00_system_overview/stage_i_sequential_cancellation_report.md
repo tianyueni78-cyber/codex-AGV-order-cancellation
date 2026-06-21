@@ -341,7 +341,46 @@ Step I7 完成时应满足：
 - 第一版默认停止后续事件。
 - 不做工序中断或 AGV 中途卸载/改派。
 
-## 12. Step I1 验收标准
+## 12. Step I8：连续取消单元测试
+
+阶段 I 新增连续取消单元测试：
+
+```text
+tests/test_order_cancellation_sequential_events.m
+```
+
+运行入口：
+
+```matlab
+run('tests/test_order_cancellation_sequential_events.m')
+```
+
+测试内容：
+
+- 两个取消事件按时间顺序执行。
+- 每次事件后都有最终选择。
+- 第二次状态提取基于第一次选择后的计划。
+- 第一次取消的订单不会在第二次计划中回流。
+- 两次事件后机器无冲突。
+- 两次事件后 AGV 无冲突。
+- 两次事件后工件顺序满足。
+- 正在加工取消被标记为 unsupported。
+
+测试约束：
+
+- 不写 `outputs/`。
+- 不跑正式实验。
+- 使用 `data_sample/Mk01.fjs` 和最小构造 schedule。
+- 不调用长时间 NSGA-II。
+
+Step I8 完成时应满足：
+
+- 连续取消主流程有可直接运行的 MATLAB 测试入口。
+- 测试覆盖正常两次连续取消。
+- 测试覆盖 unsupported 事件。
+- 测试不生成实验输出。
+
+## 13. Step I1 验收标准
 
 Step I1 完成时应满足：
 
@@ -352,7 +391,7 @@ Step I1 完成时应满足：
 - 明确后续轮次使用上一轮最终选择计划作为新基线。
 - 明确阶段 I 不新增机器故障、新订单插入或强化学习。
 
-## 13. Step I2 验收标准
+## 14. Step I2 验收标准
 
 Step I2 完成时应满足：
 
@@ -363,13 +402,13 @@ Step I2 完成时应满足：
 - 已明确 `cancel_time` 非负。
 - 已明确 `policy` 当前只支持 `cancel_unstarted_operations_only`。
 
-## 14. 后续步骤入口
+## 15. 后续步骤入口
 
-下一步进入 Step I8：连续取消单元测试。
+下一步进入 Step I9：样例 smoke 脚本。
 
 建议重点确认：
 
-- 测试是否覆盖两个取消事件按时间顺序执行。
-- 测试是否覆盖第二次状态提取基于第一次选择后的计划。
-- 测试是否覆盖已取消订单不回流。
-- 测试是否覆盖 unsupported 事件标记。
+- smoke 是否使用 `cancelEvents(1): job_id = 2, cancel_time = 10`。
+- smoke 是否使用 `cancelEvents(2): job_id = 3, cancel_time = 14`。
+- smoke 是否只打印结果、不写 `outputs/`。
+- smoke 是否打印最终计划约束检查结果。
