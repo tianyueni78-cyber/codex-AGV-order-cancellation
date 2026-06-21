@@ -213,6 +213,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 E 评价与策略选择输入契约](docs/00_system_overview/stage_e_evaluation_contract.md) | 阶段 E 的输入、候选来源、前置可行性、baseline 和禁止行为 |
 | [阶段 E 工作记录](docs/00_system_overview/stage_e_work_record.md) | 阶段 E 指标定义、Y、策略选择、新增文件、测试入口、outputs 含义和阶段 F 入口说明 |
 | [阶段 F 小规模实验工作计划](docs/00_system_overview/stage_f_work_plan.md) | 阶段 F 的早期/中期/后期取消场景、多随机种子、小规模实验输出和验收标准 |
+| [阶段 F Step F1 实验范围确认](docs/00_system_overview/stage_f_scope_contract.md) | 阶段 F 只做单订单取消小规模实验，不加入机器故障、插单、连续取消、强化学习或全局最优证明 |
 | [阶段 F 之后灵活调度路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 阶段 G-N 的后续扩展路线，说明如何从第一版闭环走向灵活订单取消调度 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
 | [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
