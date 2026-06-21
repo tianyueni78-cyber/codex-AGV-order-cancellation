@@ -241,6 +241,88 @@ H2 静态验收：
 3. 能记录选择原因。
 4. 能记录两个候选的评价结果。
 
+H3 输出结构契约：
+
+阶段 H 的输出统一命名为：
+
+```matlab
+decision
+```
+
+建议字段：
+
+```matlab
+decision.isSelected
+decision.selected_strategy
+decision.selected_candidate
+decision.reason
+decision.triggered_complete_rescheduling
+decision.local_repair_evaluation
+decision.complete_rescheduling_evaluation
+decision.local_repair_isFeasible
+decision.complete_rescheduling_isFeasible
+decision.threshold_report
+decision.report
+```
+
+字段含义：
+
+1. `decision.isSelected`：是否成功选出策略。
+2. `decision.selected_strategy`：最终策略名称，取值建议为 `local_repair`、`complete_rescheduling` 或空字符串。
+3. `decision.selected_candidate`：被选中的候选方案；没有可行候选时为空。
+4. `decision.reason`：选择原因，必须来自 H3 的 reason 枚举。
+5. `decision.triggered_complete_rescheduling`：是否触发完全重调度评估。
+6. `decision.local_repair_evaluation`：阶段 E 对局部修复候选的评价结果。
+7. `decision.complete_rescheduling_evaluation`：阶段 E 对完全重调度候选的评价结果。
+8. `decision.local_repair_isFeasible`：局部修复候选是否可行。
+9. `decision.complete_rescheduling_isFeasible`：完全重调度候选是否可行。
+10. `decision.threshold_report`：记录哪些阈值被触发，例如 `cmax_delta_triggered`、`energy_delta_triggered`、`idle_waste_triggered`。
+11. `decision.report`：记录错误、拒绝原因、默认配置来源和调试信息。
+
+H3 reason 枚举：
+
+```text
+local_stable_enough
+local_infeasible_trigger_complete
+threshold_trigger_complete
+complete_better_Y
+local_better_Y
+tie_break_local
+both_infeasible
+complete_triggered_but_infeasible
+missing_required_input
+unsupported_config
+```
+
+reason 含义：
+
+1. `local_stable_enough`：局部修复可行，且没有触发 `Cmax_delta`、能耗或空闲浪费阈值，因此直接选择局部修复。
+2. `local_infeasible_trigger_complete`：局部修复不可行，触发完全重调度；完全重调度可行并被选中。
+3. `threshold_trigger_complete`：局部修复可行，但至少一个阈值被触发，因此进入完全重调度评估。
+4. `complete_better_Y`：两个候选都可行，完全重调度的 `Y` 更小，因此选择完全重调度。
+5. `local_better_Y`：两个候选都可行，局部修复的 `Y` 更小，因此选择局部修复。
+6. `tie_break_local`：两个候选都可行且 `Y` 相同，第一版按保守规则选择局部修复。
+7. `both_infeasible`：两个候选都不可行，无法选择策略。
+8. `complete_triggered_but_infeasible`：阈值或局部不可行触发了完全重调度，但完全重调度不可行；如果局部修复仍可行，可回退选择局部修复，否则拒绝选择。
+9. `missing_required_input`：缺少 H1 输入契约中的必需字段。
+10. `unsupported_config`：`config.hybrid_policy` 存在不支持的字段值或类型。
+
+H3 记录规则：
+
+1. 最终选择策略必须写入 `decision.selected_strategy`。
+2. 是否触发完全重调度必须写入 `decision.triggered_complete_rescheduling`。
+3. 选择原因必须写入 `decision.reason`，不得使用未列入枚举的临时字符串。
+4. 两个候选的评价结果必须保留，便于阶段 L 后续统计阈值是否稳定。
+5. 如果使用默认配置，必须在 `decision.report` 中记录默认来源。
+
+H3 静态验收：
+
+1. 已定义 `decision` 结构。
+2. 已定义 `reason` 枚举。
+3. 已说明每个 reason 的触发含义。
+4. 已要求记录两个候选的评价结果。
+5. H3 只更新文档，不新增源码、不新增测试、不运行 MATLAB、不生成 `outputs/`。
+
 ### Step H4：实现混合策略选择函数
 
 建议新增：
