@@ -83,6 +83,5 @@ docs/00_system_overview/baseline_call_chain_map.md
 阶段 B 从订单取消事件与状态提取开始，入口文档为：
 
 ```text
-docs/00_system_overview/order_cancellation_state_contract.md
 docs/00_system_overview/stage_b_work_record.md
 ```

@@ -196,31 +196,20 @@ outputs/        生成的输出和日志，不提交 Git
 
 ## 7. 关键文档入口
 
-后续新增重要项目文档时，必须同步在本节增加入口，避免文档散落后找不到。
+后续新增重要项目文档时，必须同步在本节增加入口。原则是“一个阶段只挂一个主文档”，阶段内部的契约、测试入口、实验输出和结论应整合到对应阶段主文档里，避免 README 变成零散文件列表。
 
 | 文档 | 内容 |
 |---|---|
-| [项目目标与分阶段工作流](docs/00_system_overview/project_goal_workflow.md) | 项目结束目标、阶段 A-F、小目标验收标准、scope 和 token 控制 |
-| [源代码迁移导读](docs/00_system_overview/source_code_migration_map.md) | 从原 `codex-AGV` 迁移了哪些源码，以及各层在订单取消项目中的用途 |
-| [基线调用链导读](docs/00_system_overview/baseline_call_chain_map.md) | 正常调度入口、配置、数据读取、编码、解码、AGV、评价和搜索链路 |
-| [阶段 A 工作记录](docs/00_system_overview/stage_a_work_record.md) | 源码迁移、基线理解、正常调度调用链、阶段 A 验收和阶段 B 入口说明 |
-| [订单取消状态分类契约](docs/00_system_overview/order_cancellation_state_contract.md) | 阶段 B 的已完成、正在加工、尚未开工分类规则和边界条件 |
-| [阶段 B 工作记录](docs/00_system_overview/stage_b_work_record.md) | 订单取消事件、状态提取、测试入口、smoke 结果和阶段 B 验收记录 |
-| [阶段 C 局部修复输入契约](docs/00_system_overview/stage_c_local_repair_contract.md) | 局部修复的输入、支持策略、拒绝条件和禁止行为 |
-| [阶段 C 工作记录](docs/00_system_overview/stage_c_work_record.md) | 局部修复候选、删除式修复、可行性检查、测试入口和 smoke 结果 |
-| [阶段 D 完全重调度输入与输出契约](docs/00_system_overview/stage_d_complete_rescheduling_contract.md) | 完全重调度候选的输入、输出、冻结任务、重调度任务、排除规则和拒绝条件 |
-| [阶段 D 工作记录](docs/00_system_overview/stage_d_work_record.md) | 完全重调度候选、independent 解码复用、新增文件、测试入口和阶段 E 入口说明 |
-| [阶段 E 评价与策略选择输入契约](docs/00_system_overview/stage_e_evaluation_contract.md) | 阶段 E 的输入、候选来源、前置可行性、baseline 和禁止行为 |
-| [阶段 E 工作记录](docs/00_system_overview/stage_e_work_record.md) | 阶段 E 指标定义、Y、策略选择、新增文件、测试入口、outputs 含义和阶段 F 入口说明 |
-| [阶段 F 小规模实验工作计划](docs/00_system_overview/stage_f_work_plan.md) | 阶段 F 的早期/中期/后期取消场景、多随机种子、小规模实验输出和验收标准 |
-| [阶段 F Step F1 实验范围确认](docs/00_system_overview/stage_f_scope_contract.md) | 阶段 F 只做单订单取消小规模实验，不加入机器故障、插单、连续取消、强化学习或全局最优证明 |
-| [阶段 F 之后灵活调度路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 阶段 G-N 的后续扩展路线，说明如何从第一版闭环走向灵活订单取消调度 |
-| [阶段 F Step F9 结果分析模板](docs/00_system_overview/stage_f_result_analysis_template.md) | 小规模实验结果分析口径，规定如何基于多随机种子输出形成第一版结论 |
-| [阶段 F 工作记录](docs/00_system_overview/stage_f_work_record.md) | 阶段 F 小规模实验的配置、场景、种子、入口、输出、当前结果状态、局限和后续扩展 |
-| [阶段 F 项目报告](docs/00_system_overview/stage_f_project_report.md) | 阶段 F 小规模实验的真实输出、汇总指标、第一版结论、局限和后续建议 |
-| [阶段 G 项目报告](docs/00_system_overview/stage_g_project_report.md) | 阶段 G 的范围、配置、场景库、测试入口、实验入口、真实输出、汇总结果、结论、局限和阶段 H 入口 |
-| [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
-| [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
+| [项目目标与分阶段工作流](docs/00_system_overview/project_goal_workflow.md) | 项目结束目标、阶段 A-G、scope 和验收边界 |
+| [阶段 A：源码迁移与基线理解](docs/00_system_overview/stage_a_work_record.md) | 源码迁移、基线调用链、数据读取、编码、解码、搜索和阶段 A 验收 |
+| [阶段 B：订单取消事件与状态提取](docs/00_system_overview/stage_b_work_record.md) | cancel 结构、状态分类、机器/AGV 状态提取、测试入口和 smoke 结果 |
+| [阶段 C：局部修复候选方案](docs/00_system_overview/stage_c_work_record.md) | 删除式局部修复、冲突检查、工序顺序检查、候选生成和 smoke 结果 |
+| [阶段 D：完全重调度候选方案](docs/00_system_overview/stage_d_work_record.md) | 冻结任务、剩余任务、independent 解码复用、候选合并和 smoke 结果 |
+| [阶段 E：评价与策略选择](docs/00_system_overview/stage_e_work_record.md) | Cmax_delta、SD、TD、能耗、Y、策略选择、outputs 含义和 smoke 结果 |
+| [阶段 F：小规模实验项目报告](docs/00_system_overview/stage_f_project_report.md) | 早期/中期/后期取消实验、汇总指标、结论、局限和后续建议 |
+| [阶段 G：场景库项目报告](docs/00_system_overview/stage_g_project_report.md) | 场景库配置、批量实验、真实输出、汇总结果、结论和阶段 H 入口 |
+| [阶段 G-N 后续路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 从第一版闭环走向更灵活订单取消调度的后续阶段 |
+| [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 仓库目录和关键文件用途说明 |
 
 ## 8. Agent 工作规则
 
