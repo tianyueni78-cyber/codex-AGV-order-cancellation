@@ -134,6 +134,33 @@ config
 3. 候选评价来自阶段 E。
 4. 阶段 H 不重新实现状态提取、局部修复、完全重调度或指标计算。
 
+H1 确认结果：
+
+1. `localRepairCandidate` 必须来自阶段 C 的 `build_local_repair_candidate.m`。
+2. `completeReschedulingCandidate` 必须来自阶段 D 的 `build_complete_rescheduling_candidate.m`。
+3. `evaluation` 必须来自阶段 E 的 `evaluate_order_cancellation_candidate.m` 和 `select_order_cancellation_strategy.m`。
+4. `state` 必须来自阶段 B 的 `extract_cancellation_state.m`，阶段 H 只读取状态，不重新分类工序或 AGV 任务。
+5. `cancel` 必须来自阶段 B 的 `create_order_cancellation_event.m`，并已通过 `validate_order_cancellation_event.m`。
+6. `problem`、`machineData`、`agvData` 和 `baselineSchedule` 只作为上下文和指标解释来源，阶段 H 不修改这些输入。
+7. `config` 是混合策略触发规则的唯一来源，后续 H2 负责定义 `config.hybrid_policy` 字段。
+
+H1 禁止行为：
+
+1. 不重新实现状态提取。
+2. 不重新实现局部修复。
+3. 不重新实现完全重调度。
+4. 不重新实现 `Cmax_delta`、`SD`、`TD`、能耗或 `Y` 指标。
+5. 不运行 MATLAB。
+6. 不生成 `outputs/`。
+
+H1 静态验收：
+
+1. 阶段 C 候选生成入口已确认存在：`src/cancellation/build_local_repair_candidate.m`。
+2. 阶段 D 候选生成入口已确认存在：`src/cancellation/build_complete_rescheduling_candidate.m`。
+3. 阶段 E 候选评价入口已确认存在：`src/cancellation/evaluate_order_cancellation_candidate.m`。
+4. 阶段 E 策略选择入口已确认存在：`src/cancellation/select_order_cancellation_strategy.m`。
+5. H1 只更新文档，不新增源码、不新增测试、不运行实验。
+
 ### Step H2：定义混合策略配置
 
 目标：把触发阈值写入 config。
