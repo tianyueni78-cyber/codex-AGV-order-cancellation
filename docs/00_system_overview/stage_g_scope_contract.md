@@ -237,3 +237,52 @@ Step G3 验收状态：
 ```text
 Step G4：实现场景库生成函数
 ```
+
+## 10. Step G4：场景库生成函数
+
+已新增：
+
+```text
+src/cancellation/build_order_cancellation_scenarios.m
+```
+
+函数入口：
+
+```matlab
+[scenarios, summary] = build_order_cancellation_scenarios( ...
+    problem, baselineSchedule, config)
+```
+
+当前功能：
+
+1. 根据配置中的 `datasets`、`time_windows`、`job_categories` 和 `seeds` 生成场景组合。
+2. 复用 `evaluate_candidate_cmax` 计算 baseline `Cmax`。
+3. 根据 `baseline_Cmax * cancel_time_ratio` 计算 `cancel.cancel_time`。
+4. 根据 `job_category` 选择 `cancel.job_id`。
+5. 生成可追溯的 `scenario_id`。
+6. 返回 `summary.total_count`、`summary.by_dataset`、`summary.by_time_window`、`summary.by_job_category` 和 `summary.by_seed`。
+
+边界说明：
+
+1. 函数不读文件。
+2. 函数不写 `outputs/`。
+3. 函数不运行调度实验。
+4. 函数不调用 NSGA-II。
+5. `critical` 和 `noncritical` 若无法从 baseline 机器表稳定判断，会跳过并写入 `summary.skipped`。
+
+Step G4 验收状态：
+
+1. 已能生成场景列表。
+2. 已能统计场景数量。
+3. 已按配置生成 `scenario_id`。
+4. 已按 `baseline_Cmax * cancel_time_ratio` 生成取消时刻。
+5. 已按 job category 选择取消订单。
+6. 本步骤未运行 MATLAB。
+7. 本步骤未生成 `outputs/`。
+8. 本步骤未修改 `raw_code/`。
+
+下一步进入：
+
+```text
+Step G5：实现 job 分类规则
+```
