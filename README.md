@@ -217,6 +217,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 F 之后灵活调度路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 阶段 G-N 的后续扩展路线，说明如何从第一版闭环走向灵活订单取消调度 |
 | [阶段 F Step F9 结果分析模板](docs/00_system_overview/stage_f_result_analysis_template.md) | 小规模实验结果分析口径，规定如何基于多随机种子输出形成第一版结论 |
 | [阶段 F 工作记录](docs/00_system_overview/stage_f_work_record.md) | 阶段 F 小规模实验的配置、场景、种子、入口、输出、当前结果状态、局限和后续扩展 |
+| [阶段 F 项目报告](docs/00_system_overview/stage_f_project_report.md) | 阶段 F 小规模实验的真实输出、汇总指标、第一版结论、局限和后续建议 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 原迁移项目的目录和文件用途说明 |
 | [入口地图](docs/00_system_overview/entrypoint_map.md) | 原迁移项目中常用任务应查看的入口 |
 

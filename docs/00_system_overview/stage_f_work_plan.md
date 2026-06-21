@@ -472,10 +472,12 @@ docs/00_system_overview/stage_f_result_analysis_template.md
 Step F9 当前状态：
 
 1. 分析模板已建立。
-2. 模板规定必须读取 `scenario_results.csv`、`seed_results.csv` 和 `selected_strategy_counts.csv`。
-3. 模板覆盖策略倾向、`Cmax`、`SD`、`TD`、能耗和不可行约束来源。
-4. 由于 Step F8 尚未确认运行，当前不能填写真实实验结论。
-5. 本步骤未运行 MATLAB，未生成 `outputs/`，未修改 `raw_code/`。
+2. Step F8 已运行，输出目录为 `outputs/order_cancellation_small_experiment/20260621_094024/`。
+3. 已读取 `scenario_results.csv`、`seed_results.csv` 和 `selected_strategy_counts.csv`。
+4. 已形成阶段 F 项目报告：`docs/00_system_overview/stage_f_project_report.md`。
+5. 报告覆盖策略倾向、`Cmax`、`SD`、`TD`、能耗和不可行约束来源。
+6. 当前 CSV 未保存详细 `rejectedReasons`，因此早期和后期取消的不可行原因只能记录为 `no_feasible_candidate`，不能进一步归因。
+7. 本步骤未修改 `raw_code/`。
 
 ## 13. Step F10：阶段 F 工作记录
 
@@ -551,6 +553,16 @@ Step F10 当前状态：
 基于汇总结果形成第一版小规模实验结论；
 结果已写入 outputs/。
 ```
+
+当前完成状态：
+
+1. 已在早期取消、中期取消、后期取消三个场景上运行小规模实验。
+2. 每个场景同时报告局部修复和完全重调度字段。
+3. 每个场景报告调度约束检查字段，或清楚记录 `no_feasible_candidate`。
+4. 多随机种子结果已汇总。
+5. 已基于汇总结果形成第一版小规模实验结论。
+6. 结果已写入 `outputs/order_cancellation_small_experiment/20260621_094024/`。
+7. 阶段 F 第一版小规模实验闭环已完成。
 
 ## 16. 后续扩展方向
 

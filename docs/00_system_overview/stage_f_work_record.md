@@ -164,42 +164,34 @@ experiment_notes.md
 
 ## 9. 汇总结果
 
-当前状态：
+Step F8 已运行，输出目录：
 
 ```text
-待 Step F8 运行后填写。
+outputs/order_cancellation_small_experiment/20260621_094024/
 ```
 
-原因：
+本次共运行 9 个场景-seed 组合：
 
-1. 当前尚未确认运行 `scripts/run_order_cancellation_small_experiment.m`。
-2. 当前没有新的 `outputs/order_cancellation_small_experiment/<timestamp>/` 结果目录可用于分析。
-3. 不能把阶段 E smoke 或单次样例输出当作阶段 F 多随机种子汇总结果。
+1. `early_cancel`：3 次，局部修复和完全重调度均不可评价。
+2. `middle_cancel`：3 次，局部修复和完全重调度均可评价。
+3. `late_cancel`：3 次，局部修复和完全重调度均不可评价。
 
-F8 运行后，应从以下文件读取真实汇总结果：
+策略选择汇总：
 
-```text
-outputs/order_cancellation_small_experiment/<timestamp>/scenario_results.csv
-outputs/order_cancellation_small_experiment/<timestamp>/seed_results.csv
-outputs/order_cancellation_small_experiment/<timestamp>/selected_strategy_counts.csv
-```
+1. 无可行候选：6 次。
+2. `local_repair`：3 次。
+3. `complete_rescheduling`：0 次。
 
 ## 10. 小规模结论
 
-当前状态：
+本次小规模结论：
 
-```text
-待 Step F8 运行并完成 Step F9 分析后填写。
-```
-
-结论必须回答：
-
-1. 哪些场景更倾向选择局部修复。
-2. 哪些场景更倾向选择完全重调度。
-3. 完全重调度是否稳定降低 `Cmax`。
-4. 完全重调度是否带来更大 `SD` 或 `TD`。
-5. 能耗变化是否稳定。
-6. 不可行案例来自哪类约束。
+1. 只有 `middle_cancel` 形成可评价候选。
+2. `middle_cancel` 中完全重调度稳定降低 `Cmax`，`complete_Cmax_delta_mean = -3.000000`。
+3. `middle_cancel` 中完全重调度能耗改善更大，`complete_energy_delta_mean = -13.633333`，局部修复为 `-11.600000`。
+4. `middle_cancel` 中完全重调度扰动更大，`complete_SD_mean = 3.333333`，`complete_TD_mean = 2.000000`。
+5. `middle_cancel` 中两类候选 `Y` 均为 `0.500000`，最终按 tie-break 规则选择 `local_repair`。
+6. `early_cancel` 和 `late_cancel` 均为 `no_feasible_candidate`，当前 CSV 未保存详细 `rejectedReasons`，不能进一步归因到具体约束类型。
 
 结论边界：
 
@@ -207,6 +199,7 @@ outputs/order_cancellation_small_experiment/<timestamp>/selected_strategy_counts
 2. 同时报告原始指标和 `Y`。
 3. 不声称全局最优。
 4. 不把单个 smoke 结果当作研究结论。
+5. 详细报告见 `docs/00_system_overview/stage_f_project_report.md`。
 
 ## 11. 局限说明
 
@@ -256,9 +249,8 @@ docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md
 1. `docs/00_system_overview/stage_f_work_record.md` 已新增。
 2. 文档已说明阶段 F 目标、实验配置、场景定义和随机种子设置。
 3. 文档已说明新增文件清单、测试入口、实验入口和输出目录。
-4. 文档已说明当前汇总结果和小规模结论需要等待 Step F8 输出。
+4. 文档已补充 Step F8 输出目录和阶段 F 小规模结论。
 5. 文档已说明阶段 F 是小规模实验，不是最终大规模结论。
 6. 文档已说明后续扩展方向。
-7. 本步骤未运行 MATLAB。
-8. 本步骤未生成 `outputs/`。
-9. 本步骤未修改 `raw_code/`。
+7. 本步骤读取了 Step F8 已生成的 `outputs/`，未新增实验输出。
+8. 本步骤未修改 `raw_code/`。
