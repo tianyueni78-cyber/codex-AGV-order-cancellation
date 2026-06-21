@@ -163,10 +163,18 @@ Step F2 静态验收结果：
 
 目标：对一个场景和一个随机种子运行阶段 B-E。
 
-建议新增：
+已新增：
 
 ```text
 src/cancellation/run_order_cancellation_scenario.m
+```
+
+函数入口：
+
+```matlab
+result = run_order_cancellation_scenario( ...
+    problem, machineData, agvData, baselineSchedule, ...
+    scenario, seed, config)
 ```
 
 流程：
@@ -180,12 +188,57 @@ src/cancellation/run_order_cancellation_scenario.m
 7. 调用阶段 E 选择策略。
 8. 返回一行结构化结果。
 
+输出结果包含：
+
+```text
+scenario_name
+seed
+cancel_job_id
+cancel_time
+local_candidate_isFeasible
+complete_candidate_isFeasible
+local_isFeasible
+complete_isFeasible
+local_Cmax_delta
+complete_Cmax_delta
+local_SD
+complete_SD
+local_TD
+complete_TD
+local_energy_delta
+complete_energy_delta
+local_Y
+complete_Y
+selected_strategy
+selected_reason
+selected_Y
+details
+```
+
+说明：
+
+1. `scenario.cancel_time` 可直接给定取消时刻。
+2. 如果只给 `scenario.cancel_time_ratio`，函数用 `baseline_Cmax * cancel_time_ratio` 换算取消时刻。
+3. `details` 保留 `cancel`、`state`、两个候选、两个评价结果和最终选择，便于后续调试。
+4. 函数内部第一版使用确定性的 first-choice 染色体构造完全重调度候选，不启动正式 NSGA-II 长实验。
+5. 函数不写 `outputs/`，由后续 Step F5/F6 的脚本负责落盘。
+
 验收标准：
 
 1. 一个场景能同时产生局部修复和完全重调度结果。
 2. 两个候选的可行性检查结果被记录。
 3. 不在单场景函数里写 `outputs/`。
 4. 不启动正式 NSGA-II 长实验。
+
+Step F3 静态验收结果：
+
+1. `src/cancellation/run_order_cancellation_scenario.m` 已存在。
+2. 函数入口接收 `problem`、`machineData`、`agvData`、`baselineSchedule`、`scenario`、`seed` 和 `config`。
+3. 函数串联阶段 B-E 已有链路。
+4. 函数返回一行结构化 `result`，并记录两个候选的可行性和评价指标。
+5. 函数没有写 `outputs/`。
+6. 函数没有调用正式 NSGA-II 长实验入口。
+7. 本步骤未运行 MATLAB，未生成 `outputs/`，未修改 `raw_code/`。
 
 ## 7. Step F4：场景约束检查
 
