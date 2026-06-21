@@ -595,3 +595,34 @@ Step I2 完成时应满足：
 - 每轮计划通过约束检查，或明确记录不可行/unsupported 原因。
 
 当前已通过 `test_order_cancellation_sequential_events.m` 验证连续取消主流程。阶段 I 的最终项目报告仍需在用户运行 smoke 后补充 smoke 输出结果。
+
+## 18. Step I11 静态验收结果
+
+本节记录阶段 I 完成前的静态验收。静态验收只检查文件、README 入口和文档覆盖情况，不运行 MATLAB，不生成 `outputs/`。
+
+| 验收项 | 结果 |
+|---|---|
+| `src/cancellation/run_sequential_order_cancellations.m` 存在 | 通过 |
+| 连续取消事件测试存在 | 通过，`tests/test_order_cancellation_sequential_events.m` 已存在 |
+| smoke 脚本存在 | 通过，`scripts/run_order_cancellation_sequential_smoke.m` 已存在 |
+| 阶段 I 主报告存在 | 通过，当前文档为阶段 I 唯一主报告 |
+| README 已挂阶段 I 报告入口 | 通过，README 只挂 `stage_i_sequential_cancellation_report.md` 一个阶段 I 主入口 |
+| 至少支持 2 个连续取消事件 | 通过，报告和测试均按至少两个事件设计 |
+| 每次事件后都有局部修复、完全重调度和最终选择 | 通过，主流程按阶段 B-H 链路重复执行 |
+| 后一次状态提取基于前一次选择后的计划 | 通过，主流程更新 `currentSchedule` 后进入下一轮 |
+| 已取消订单不会回流 | 通过，报告定义 `cancelledJobSet` 和回流检查规则 |
+| unsupported 情况能清楚记录 | 通过，报告定义 unsupported 原因和停止策略 |
+| 没有机器故障 | 通过，阶段 I 明确不加入机器故障 |
+| 没有新订单插入 | 通过，阶段 I 明确只处理连续取消，不处理新订单插入 |
+| 没有强化学习 | 通过 |
+| 没有全局最优证明 | 通过 |
+| `raw_code/` 无修改 | 通过，静态验收时 git 工作区干净 |
+
+已收到并记录的测试结果：
+
+```text
+test_order_cancellation_sequential_events passed
+>>
+```
+
+阶段 I 静态验收结论：阶段 I 的文件结构、主报告入口和核心范围控制均满足验收要求。smoke 输出仍需用户运行 `run('scripts/run_order_cancellation_sequential_smoke.m')` 后补充。
