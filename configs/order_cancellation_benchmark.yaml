@@ -1,0 +1,13 @@
+datasets:
+  - data_sample/Mk01.fjs
+
+scenario_library_config: configs/order_cancellation_scenario_library.yaml
+
+strategies:
+  - fixed_weight
+  - adaptive_weight
+
+seeds: [1, 2, 3, 4, 5]
+
+max_runtime_minutes: 30
+output_base_dir: outputs/order_cancellation_benchmark

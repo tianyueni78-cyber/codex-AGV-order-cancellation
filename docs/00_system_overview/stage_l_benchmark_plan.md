@@ -52,7 +52,58 @@ Step L1 的目标是明确阶段 L 的边界，防止验证阶段变成新的算
 
 Step L1 完成标志：阶段 L 已被限定为“大规模与统计验证”阶段。后续可以进入 Step L2：定义 benchmark 配置。
 
-## 3. 支持文档入口
+## 3. Step L2：定义 benchmark 配置
+
+Step L2 新增 benchmark 总控配置：
+
+```text
+configs/order_cancellation_benchmark.yaml
+```
+
+配置内容：
+
+```yaml
+datasets:
+  - data_sample/Mk01.fjs
+
+scenario_library_config: configs/order_cancellation_scenario_library.yaml
+
+strategies:
+  - fixed_weight
+  - adaptive_weight
+
+seeds: [1, 2, 3, 4, 5]
+
+max_runtime_minutes: 30
+output_base_dir: outputs/order_cancellation_benchmark
+```
+
+字段含义：
+
+| 字段 | 含义 |
+|---|---|
+| `datasets` | benchmark 要遍历的数据实例列表，第一版先保留 `data_sample/Mk01.fjs`，后续可追加更多相对路径实例 |
+| `scenario_library_config` | 复用阶段 G 场景库配置，避免在 benchmark 中重复定义场景生成规则 |
+| `strategies` | 需要比较的策略，当前包含固定权重 `fixed_weight` 和自适应权重 `adaptive_weight` |
+| `seeds` | benchmark 使用的随机种子列表，第一版为 5 个 seed |
+| `max_runtime_minutes` | 运行预算字段，后续脚本应在超过预算时停止或缩小实验规模并记录原因 |
+| `output_base_dir` | benchmark 输出根目录，后续运行脚本应写入 timestamp 子目录 |
+
+阶段 L2 只定义配置，不运行 benchmark，不写 `outputs/`。
+
+## 4. Step L2 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 每个实例路径都是相对路径 | 通过，当前为 `data_sample/Mk01.fjs` |
+| 每个实例有配置记录 | 通过，实例统一记录在 `datasets` 列表中 |
+| 随机种子明确 | 通过，`seeds: [1, 2, 3, 4, 5]` |
+| 是否启用固定权重、自适应权重明确 | 通过，`strategies` 包含 `fixed_weight` 和 `adaptive_weight` |
+| 有运行预算字段 | 通过，`max_runtime_minutes: 30` |
+
+Step L2 完成标志：阶段 L benchmark 配置入口已经建立。后续可以进入 Step L3：定义 benchmark 单次运行结果结构。
+
+## 5. 支持文档入口
 
 README 只挂阶段 L 主文档；阶段 L 依赖的上游文档可从这里进入。
 
