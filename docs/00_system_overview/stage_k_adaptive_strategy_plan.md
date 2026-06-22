@@ -196,3 +196,77 @@ late:   cancel_time_ratio >= 0.67
 | 固定权重 baseline 仍可使用 | 通过，自适应规则只在 baseline 之上调整，无法应用时回退 baseline |
 
 Step K4 完成标志：第一版规则式自适应权重策略已经定义。后续可以进入 Step K5：实现自适应权重函数。
+
+## 9. Step K5：实现自适应权重函数
+
+Step K5 新增自适应权重函数：
+
+```text
+src/cancellation/adapt_evaluation_weights.m
+```
+
+函数入口：
+
+```matlab
+[weights, report] = adapt_evaluation_weights(features, baseConfig)
+```
+
+输出权重字段：
+
+```matlab
+weights.Cmax_delta
+weights.SD
+weights.TD
+weights.energy_delta
+```
+
+输出报告字段：
+
+```matlab
+report.reason
+report.applied_rules
+report.isAdaptive
+report.preferred_strategy
+report.baseline_weights
+report.weights
+```
+
+第一版实现口径：
+
+- 从 `baseConfig.weights` 读取固定权重 baseline。
+- 若未传入完整 baseline，则使用等权重 `0.25 / 0.25 / 0.25 / 0.25`。
+- 根据 Step K4 的规则调整权重。
+- 调整后权重归一化，使四个权重总和为 1。
+- `unsupported_flag = true` 时保留 baseline，并记录 `unsupported_state_keep_baseline`。
+- 局部修复不可行且完全重调度可行时，返回偏效率权重，并记录 `preferred_strategy = 'complete_rescheduling'`。
+- 完全重调度不可行且局部修复可行时，返回偏稳定权重，并记录 `preferred_strategy = 'local_repair'`。
+
+第一版默认阈值：
+
+```text
+early:  cancel_time_ratio < 0.33
+middle: 0.33 <= cancel_time_ratio < 0.67
+late:   cancel_time_ratio >= 0.67
+high frozen ratio: frozen_operation_ratio >= 0.67
+many remaining operations: remaining_operation_count >= 3
+```
+
+`many remaining operations` 的阈值可以通过：
+
+```matlab
+baseConfig.adaptive.remaining_operation_count_high
+```
+
+覆盖。该阈值仍属于规则式配置，不属于机器学习训练结果。
+
+## 10. Step K5 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 能返回完整权重 | 通过，输出 `Cmax_delta`、`SD`、`TD` 和 `energy_delta` |
+| 权重非负 | 通过，归一化前会将非法权重按 0 处理 |
+| 权重总和为 1 | 通过，`adapt_evaluation_weights.m` 对输出权重归一化 |
+| 能记录应用了哪些规则 | 通过，输出 `report.applied_rules` |
+| 能退回固定权重 baseline | 通过，unsupported、无可行候选或无调整时可保留 baseline |
+
+Step K5 完成标志：阶段 K 已具备规则式自适应权重生成函数。后续可以进入 Step K6：接入策略选择流程。
