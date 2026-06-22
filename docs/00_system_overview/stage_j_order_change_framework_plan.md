@@ -435,7 +435,7 @@ run('tests/test_schedule_change_event.m')
 | 非法 `event_time` 被拒绝 | 通过，测试覆盖负数事件时间 |
 | 缺少取消 `job_id` 被拒绝 | 通过，测试覆盖缺少 `event.payload.job_id` |
 | 插单缺少 `new_job` 被拒绝 | 通过，测试覆盖缺少 `event.payload.new_job` |
-| 订单取消已有测试不回退 | 待用户运行测试后记录结果；当前测试已覆盖旧 `cancel` 恢复后仍通过已有取消事件校验 |
+| 订单取消已有测试不回退 | 通过，用户已运行 `test_order_cancellation_sequential_events.m` 并返回 passed；当前测试也覆盖旧 `cancel` 恢复后仍通过已有取消事件校验 |
 
 Step J8 完成标志：统一事件接口测试已建立。用户运行 `run('tests/test_schedule_change_event.m')` 后，可将输出结果补充到本报告。
 
@@ -486,8 +486,49 @@ cancel = schedule_change_event_to_order_cancellation(event);
 | 可把 `schedule_change_event` 转成旧 `cancel` | 通过，`schedule_change_event_to_order_cancellation.m` 已存在 |
 | 不强制一次性替换全部旧函数 | 通过，阶段 B-I 函数签名未在阶段 J 中改写 |
 | 统一事件框架作为上层入口存在 | 通过，`cancel_order` 可映射到旧 `cancel` 后进入阶段 B-I |
-| 阶段 B-I 测试不回退 | 待用户运行测试后记录结果；Step J8 测试已覆盖旧 `cancel` 恢复后仍通过已有取消事件校验 |
+| 阶段 B-I 测试不回退 | 通过，用户已运行 `test_order_cancellation_sequential_events.m` 并返回 passed |
 | 新事件接口能表达旧取消事件 | 通过，`order_cancellation_to_schedule_change_event.m` 已实现 |
 | 不大规模重构已有取消代码 | 通过，Step J9 只确认兼容策略并更新文档 |
 
 Step J9 完成标志：阶段 J 已保持对现有订单取消链路的兼容。后续可以进入 Step J10：阶段 J 静态验收。
+
+## 19. Step J10：阶段 J 静态验收
+
+Step J10 用于确认阶段 J 已完成统一事件框架，但没有越界进入完整插单算法。
+
+静态验收结果：
+
+| 验收项 | 结果 |
+|---|---|
+| `src/events/create_schedule_change_event.m` 存在 | 通过 |
+| `src/events/validate_schedule_change_event.m` 存在 | 通过 |
+| `tests/test_schedule_change_event.m` 存在 | 通过 |
+| 阶段 J 文档存在 | 通过，当前文档为阶段 J 主入口 |
+| README 挂阶段 J 主入口 | 通过，README 已挂 `stage_j_order_change_framework_plan.md` |
+| `cancel_order` 能用统一事件结构表示 | 通过，`event.event_type = 'cancel_order'`，`event.payload.job_id` 保存旧取消订单 |
+| `insert_order` 有预留结构 | 通过，`insert_order_to_schedule_change_event.m` 使用 `event.payload.new_job` |
+| 没有完整插单解码实现 | 通过，插单只返回接口层事件和 pending 状态 |
+| 订单取消现有测试不回退 | 通过，用户已运行 `test_order_cancellation_sequential_events.m` 并返回 passed |
+| `raw_code/` 无修改 | 通过，阶段 J 未修改 `raw_code/` |
+
+已收到的测试输出：
+
+```text
+test_order_cancellation_sequential_events passed
+>>
+```
+
+该结果说明：阶段 J 的统一事件接口和兼容适配没有破坏阶段 I 的连续取消链路。
+
+## 20. 阶段 J 完成标志
+
+阶段 J 完成时已达到：
+
+- 已经有统一订单变更事件结构。
+- 现有订单取消能映射为 `cancel_order`。
+- 新订单插入能以 `insert_order` 形式预留。
+- 文档清楚说明取消和插单的共同点与差异。
+- 插单算法没有被强行展开。
+- 后续可以进入阶段 K：自适应策略选择，或继续扩展插单侧任务集合更新。
+
+阶段 J 完成结论：阶段 J 已形成统一订单变更事件接口，并保持对阶段 B-I 订单取消链路的兼容。当前项目仍未实现完整新订单插入调度算法；插单侧保持为接口预留和 `pending` 状态。
