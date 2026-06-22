@@ -142,3 +142,57 @@ features = extract_cancellation_features( ...
 | unsupported 情况能进入特征 | 通过，输出 `features.unsupported_flag` |
 
 Step K3 完成标志：阶段 K 已具备从阶段 B-H 结构中提取自适应策略特征的函数。后续可以进入 Step K4：定义规则式权重调整策略。
+
+## 7. Step K4：定义规则式权重调整策略
+
+Step K4 的目标是定义第一版规则式自适应权重策略。权重仍然作为 `config.weights` 进入阶段 E/H 的评价和选择流程，不写死在评价函数里。
+
+第一版权重字段：
+
+```matlab
+weights.Cmax_delta
+weights.SD
+weights.TD
+weights.energy_delta
+```
+
+固定权重 baseline 仍然保留。自适应权重只是在 baseline 之上，根据 `features` 调整权重倾向。
+
+第一版规则：
+
+| 规则 | 触发特征 | 权重倾向 | 解释 |
+|---|---|---|---|
+| 早期取消 | `cancel_time_ratio` 较低 | 提高 `Cmax_delta` 和 `energy_delta` | 剩余任务较多，完全重调度可能更有价值，优先关注完工时间和能耗改善 |
+| 中期取消 | `cancel_time_ratio` 居中 | 平衡 `Cmax_delta`、`SD`、`TD`、`energy_delta` | 剩余任务和已完成任务都较多，需要兼顾效率和扰动 |
+| 后期取消 | `cancel_time_ratio` 较高 | 提高 `SD` 和 `TD` | 已完成任务多，扰动越小越重要，局部修复往往更稳 |
+| 冻结比例高 | `frozen_operation_ratio` 较高 | 提高 `SD` 和 `TD` | 冻结任务越多，后续计划越应减少机器和 AGV 扰动 |
+| 剩余任务多 | `remaining_operation_count` 较高 | 提高 `Cmax_delta` 和 `energy_delta` | 剩余任务越多，重排空间越大，效率指标更重要 |
+| 局部修复不可行 | `local_repair_feasible = false` | 直接偏向完全重调度 | 局部修复不能作为最终可行方案 |
+| 完全重调度不可行 | `complete_rescheduling_feasible = false` | 直接偏向局部修复 | 完全重调度不能作为最终可行方案 |
+| unsupported | `unsupported_flag = true` | 不做正常自适应选择 | 第一版不处理中断加工或运输，应保留 unsupported 结果 |
+
+建议第一版时间段解释：
+
+```text
+early:  cancel_time_ratio < 0.33
+middle: 0.33 <= cancel_time_ratio < 0.67
+late:   cancel_time_ratio >= 0.67
+```
+
+建议归一化约定：
+
+- 权重调整后必须非负。
+- 权重总和建议归一化为 1。
+- 若规则无法应用，返回固定权重 baseline。
+- 若候选可行性已经排除某一方案，权重仍可记录，但最终选择应优先遵守可行性。
+
+## 8. Step K4 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 每条规则可解释 | 通过，规则表已说明触发特征、权重倾向和原因 |
+| 权重来自函数输出，不写死在评价函数里 | 通过，Step K4 约定由后续 `adapt_evaluation_weights.m` 输出 `weights` |
+| 权重总和可归一化 | 通过，文档约定权重非负且总和归一化为 1 |
+| 固定权重 baseline 仍可使用 | 通过，自适应规则只在 baseline 之上调整，无法应用时回退 baseline |
+
+Step K4 完成标志：第一版规则式自适应权重策略已经定义。后续可以进入 Step K5：实现自适应权重函数。
