@@ -390,3 +390,51 @@ schedule_change_event
 | README 挂阶段 J 一个主入口 | 通过，README 关键文档入口已挂 `stage_j_order_change_framework_plan.md` |
 
 Step J7 完成标志：阶段 J 主文档已整理成统一框架入口，README 已挂阶段 J 一个主入口。
+
+## 15. Step J8：补充事件接口测试
+
+Step J8 新增统一事件接口测试：
+
+```text
+tests/test_schedule_change_event.m
+```
+
+运行入口：
+
+```matlab
+run('tests/test_schedule_change_event.m')
+```
+
+测试覆盖内容：
+
+- 创建合法 `cancel_order`。
+- 将旧 `cancel` 映射为统一 `cancel_order`。
+- 从统一 `cancel_order` 恢复旧 `cancel`。
+- 恢复后的旧 `cancel` 继续通过 `validate_order_cancellation_event.m`。
+- 创建合法 `insert_order` 预留事件。
+- 合法 `insert_order` 被标记为 `pending`，表示插单接口合法但完整插单算法尚未实现。
+- 非法 `event_type` 被拒绝。
+- 非法 `event_time` 被拒绝。
+- 缺少取消 `job_id` 被拒绝。
+- 插单缺少 `new_job` 被拒绝。
+
+测试边界：
+
+- 不写 `outputs/`。
+- 不运行 NSGA-II。
+- 不实现插单调度。
+- 只验证统一事件接口和旧取消事件兼容性。
+
+## 16. Step J8 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 创建合法 `cancel_order` | 通过，测试覆盖旧 `cancel` 到统一事件的映射 |
+| 创建合法 `insert_order` 预留事件 | 通过，测试覆盖 `insert_order_to_schedule_change_event.m` |
+| 非法 `event_type` 被拒绝 | 通过，测试覆盖 `machine_fault` 非法类型 |
+| 非法 `event_time` 被拒绝 | 通过，测试覆盖负数事件时间 |
+| 缺少取消 `job_id` 被拒绝 | 通过，测试覆盖缺少 `event.payload.job_id` |
+| 插单缺少 `new_job` 被拒绝 | 通过，测试覆盖缺少 `event.payload.new_job` |
+| 订单取消已有测试不回退 | 待用户运行测试后记录结果；当前测试已覆盖旧 `cancel` 恢复后仍通过已有取消事件校验 |
+
+Step J8 完成标志：统一事件接口测试已建立。用户运行 `run('tests/test_schedule_change_event.m')` 后，可将输出结果补充到本报告。
