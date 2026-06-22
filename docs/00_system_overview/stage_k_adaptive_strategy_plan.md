@@ -533,3 +533,50 @@ Step K8 完成标志：阶段 K 样例 smoke 已运行并补充结果。该 smok
 | 文档说明样本太少时不训练模型 | 通过 |
 
 Step K9 完成标志：阶段 K 文档已整理为主入口，README 已挂阶段 K 一个主入口。
+
+## 19. Step K10：阶段 K 静态验收
+
+Step K10 用于确认阶段 K 已完成规则式自适应策略选择闭环，但没有越界进入模型训练、强化学习或底层调度器重写。
+
+静态验收结果：
+
+| 验收项 | 结果 |
+|---|---|
+| `src/cancellation/extract_cancellation_features.m` 存在 | 通过 |
+| `src/cancellation/adapt_evaluation_weights.m` 存在 | 通过 |
+| 自适应权重测试存在 | 通过，`tests/test_order_cancellation_adaptive_weights.m` 已存在 |
+| 阶段 K 文档存在 | 通过，当前文档为阶段 K 主入口 |
+| README 挂阶段 K 主入口 | 通过，README 已挂 `stage_k_adaptive_strategy_plan.md` |
+| 固定权重 baseline 仍保留 | 通过，阶段 E/H 原固定权重流程未修改 |
+| 没有训练分类器 | 通过，阶段 K 第一版只做规则式自适应 |
+| 没有强化学习 | 通过，强化学习只作为后续创新方向 |
+| 没有重写底层解码器 | 通过，阶段 K 只新增特征、权重和 wrapper |
+| 没有完整插单算法 | 通过，阶段 K 不扩展阶段 J 的插单接口 |
+| `raw_code/` 无修改 | 通过，阶段 K 未修改 `raw_code/` |
+
+已收到的 smoke 输出：
+
+```text
+order cancellation adaptive strategy smoke
+dataset: data_sample/Mk01.fjs
+adaptive_report.applied_rule_1: middle_cancel_balanced
+fixed_selection.name: complete_rescheduling
+adaptive_selection.name: complete_rescheduling
+adaptive_report.reason: baseline_weights
+adaptive_report.isAdaptive: 0
+```
+
+该结果说明：在 `Mk01.fjs` 中期取消样例上，规则式自适应流程能够提取特征、生成权重、复用已有评价和选择函数，并解释为什么本次保持固定权重 baseline。
+
+## 20. 阶段 K 完成标志
+
+阶段 K 完成时已达到：
+
+- 能从订单取消场景中提取可解释特征。
+- 能根据特征生成自适应 `config.weights`。
+- 能说明每次权重变化的原因。
+- 固定权重策略仍可作为 baseline。
+- 第一版不训练模型，不使用强化学习。
+- 后续可以进入阶段 L：大规模与统计验证，用更多实验验证这些规则是否稳定。
+
+阶段 K 完成结论：阶段 K 已形成第一版规则式自适应策略选择能力。当前自适应策略不会替代阶段 B-J 的调度链路，而是在已有评价和选择流程之上，根据场景特征生成可解释权重。
