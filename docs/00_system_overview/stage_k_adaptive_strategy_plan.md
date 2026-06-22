@@ -270,3 +270,67 @@ baseConfig.adaptive.remaining_operation_count_high
 | 能退回固定权重 baseline | 通过，unsupported、无可行候选或无调整时可保留 baseline |
 
 Step K5 完成标志：阶段 K 已具备规则式自适应权重生成函数。后续可以进入 Step K6：接入策略选择流程。
+
+## 11. Step K6：接入策略选择流程
+
+Step K6 新增自适应策略选择 wrapper：
+
+```text
+src/cancellation/select_adaptive_cancellation_strategy.m
+```
+
+函数入口：
+
+```matlab
+result = select_adaptive_cancellation_strategy( ...
+    baselineSchedule, ...
+    state, ...
+    cancel, ...
+    localRepairCandidate, ...
+    completeReschedulingCandidate, ...
+    machineData, ...
+    agvData, ...
+    baseConfig)
+```
+
+第一版流程：
+
+1. 调用 `extract_cancellation_features.m` 提取场景特征。
+2. 调用 `adapt_evaluation_weights.m` 生成自适应权重。
+3. 将自适应权重写入临时 `adaptiveConfig.weights`。
+4. 复用 `evaluate_order_cancellation_candidate.m` 重新评价局部修复和完全重调度候选。
+5. 复用 `select_order_cancellation_strategy.m` 选择 `Y` 更小或唯一可行的方案。
+6. 返回特征、权重、评价结果和选择结果。
+
+输出结构：
+
+```matlab
+result.features
+result.weights
+result.adaptive_report
+result.config
+result.localRepairEvaluation
+result.completeReschedulingEvaluation
+result.selection
+result.isSelected
+```
+
+边界说明：
+
+- 固定权重策略仍能直接走阶段 E/H 原流程。
+- 自适应策略通过新 wrapper 单独调用。
+- 阶段 K 不修改 `evaluate_order_cancellation_candidate.m`。
+- 阶段 K 不修改 `select_order_cancellation_strategy.m`。
+- 阶段 K 不修改 `select_hybrid_cancellation_policy.m`。
+- 阶段 K 只把自适应权重作为临时配置传入已有评价和选择函数。
+
+## 12. Step K6 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 固定权重策略仍能跑 | 通过，阶段 E/H 原函数未修改 |
+| 自适应策略能单独调用 | 通过，新增 `select_adaptive_cancellation_strategy.m` |
+| 输出包含 `features`、`weights`、`selection` | 通过，wrapper 输出对应字段 |
+| 不重写阶段 E/H 核心逻辑 | 通过，wrapper 复用已有评价和选择函数 |
+
+Step K6 完成标志：阶段 K 已能以独立 wrapper 的方式接入策略选择流程。后续可以进入 Step K7：写自适应权重单元测试。
