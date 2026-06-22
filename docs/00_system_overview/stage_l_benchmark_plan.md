@@ -162,7 +162,96 @@ benchmark_notes.md
 
 Step L3 完成标志：阶段 L benchmark 的落盘结构已经固定。后续可以进入 Step L4：实现 benchmark 单次结果行结构。
 
-## 7. 支持文档入口
+## 7. Step L4：构造 benchmark 单次运行结果行
+
+Step L4 定义 `seed_results.csv` 中每个 dataset / scenario / seed / strategy 的结果字段。每一行代表一个策略模式在一个场景和一个随机种子上的结果。
+
+单次结果行字段：
+
+| 字段 | 含义 |
+|---|---|
+| `dataset` | 数据实例相对路径 |
+| `scenario_id` | 场景库生成的唯一场景编号 |
+| `time_window` | 取消时刻窗口，例如 early / middle / late |
+| `job_category` | 被取消订单类别，例如 random / short / long / critical / noncritical |
+| `seed` | 随机种子 |
+| `strategy_mode` | 策略模式，当前为 `fixed_weight` 或 `adaptive_weight` |
+| `selected_strategy` | 当前策略模式最终选择的候选方案，例如 `local_repair` 或 `complete_rescheduling` |
+| `is_selected` | 是否成功选出方案 |
+| `local_feasible` | 局部修复候选是否可评价可行 |
+| `complete_feasible` | 完全重调度候选是否可评价可行 |
+| `Cmax_delta` | 被选中方案的最大完工时间变化 |
+| `SD` | 被选中方案的机器工序扰动指标 |
+| `TD` | 被选中方案的 AGV 运输扰动指标 |
+| `energy_delta` | 被选中方案的能耗变化 |
+| `Y` | 被选中方案的综合评价分数 |
+| `constraint_feasible` | 被选中方案是否通过对应调度约束检查 |
+| `no_feasible_candidate` | 是否两个候选都不可行或无法选择 |
+| `runtime_seconds` | 当前行对应策略模式的运行时间记录 |
+| `error_count` | 运行或评价错误数量 |
+| `rejected_reason_count` | 不可行或拒绝原因数量 |
+
+字段解释边界：
+
+1. 指标字段记录“被选中方案”的指标，而不是同时展开局部修复和完全重调度的全部指标。
+2. 局部修复和完全重调度的可行性通过 `local_feasible` 与 `complete_feasible` 保留。
+3. 固定权重和自适应权重通过 `strategy_mode` 分开记录。
+4. 不可行原因数量先记录为计数，详细文本后续可在需要时扩展到日志文件。
+5. `runtime_seconds` 用于预算控制和实验规模评估，不作为调度目标。
+
+## 8. Step L4 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 每个场景都有原始 seed 结果 | 通过，`seed_results.csv` 每行绑定 `dataset`、`scenario_id`、`seed` 和 `strategy_mode` |
+| 指标字段包括 `Cmax_delta`、`SD`、`TD`、`energy_delta`、`Y` | 通过，结果行已包含这些字段 |
+| 能记录不可行原因数量 | 通过，结果行包含 `rejected_reason_count` |
+| 能记录运行时间 | 通过，结果行包含 `runtime_seconds` |
+
+Step L4 完成标志：benchmark 原始结果行结构已经固定。后续可以进入 Step L5：实现 benchmark 脚本。
+
+## 9. Step L5：实现 benchmark 脚本
+
+Step L5 新增 benchmark 脚本：
+
+```text
+scripts/run_order_cancellation_benchmark.m
+```
+
+运行入口：
+
+```matlab
+run('scripts/run_order_cancellation_benchmark.m')
+```
+
+脚本流程：
+
+1. 读取 `configs/order_cancellation_benchmark.yaml`。
+2. 读取并复用 `configs/order_cancellation_scenario_library.yaml`。
+3. 遍历 benchmark 配置中的 `datasets`。
+4. 为每个 dataset 生成场景库。
+5. 遍历每个 scenario 和 seed。
+6. 先运行已有阶段 B-E 管线，得到候选方案和固定权重选择结果。
+7. 对 `fixed_weight` 写入固定权重结果行。
+8. 对 `adaptive_weight` 复用同一批候选，调用阶段 K 的自适应权重策略选择。
+9. 写入 `outputs/order_cancellation_benchmark/<timestamp>/`。
+10. 写出 `seed_results.csv`、各类 summary、`benchmark_summary.json` 和 `benchmark_notes.md`。
+
+注意：该脚本会写入 `outputs/`，运行 MATLAB 前需要确认。
+
+## 10. Step L5 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 能遍历多个 dataset | 通过，脚本遍历 `benchmarkConfig.datasets` |
+| 能遍历多个场景 | 通过，脚本调用 `build_order_cancellation_scenarios` 生成场景库后逐个运行 |
+| 能遍历多个 seed | 通过，benchmark seeds 会覆盖场景库 seeds |
+| 能同时比较 `fixed_weight` 和 `adaptive_weight` | 通过，脚本按 `strategy_mode` 输出两类结果行 |
+| 运行前需要确认，因为会写 `outputs/` | 通过，文档已明确；本步骤未运行脚本 |
+
+Step L5 完成标志：阶段 L benchmark 运行入口已经建立，但尚未执行实验。后续可以进入 Step L6：实现或完善 benchmark 汇总测试。
+
+## 11. 支持文档入口
 
 README 只挂阶段 L 主文档；阶段 L 依赖的上游文档可从这里进入。
 
