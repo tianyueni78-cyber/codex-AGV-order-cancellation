@@ -438,3 +438,56 @@ run('tests/test_schedule_change_event.m')
 | 订单取消已有测试不回退 | 待用户运行测试后记录结果；当前测试已覆盖旧 `cancel` 恢复后仍通过已有取消事件校验 |
 
 Step J8 完成标志：统一事件接口测试已建立。用户运行 `run('tests/test_schedule_change_event.m')` 后，可将输出结果补充到本报告。
+
+## 17. Step J9：兼容现有取消链路
+
+Step J9 的目标是保证阶段 J 不破坏阶段 B-I 已经完成的订单取消链路。
+
+兼容原则：
+
+- 保留现有 `src/cancellation/create_order_cancellation_event.m`。
+- 保留阶段 B-I 对旧 `cancel` 结构的输入约定。
+- 不强制一次性替换阶段 B-I 的函数签名。
+- 不大规模重构已有取消代码。
+- 统一事件框架先作为上层入口存在。
+
+当前兼容适配函数：
+
+```text
+src/events/order_cancellation_to_schedule_change_event.m
+src/events/schedule_change_event_to_order_cancellation.m
+```
+
+兼容方向：
+
+```text
+旧 cancel
+  -> order_cancellation_to_schedule_change_event
+  -> schedule_change_event(cancel_order)
+
+schedule_change_event(cancel_order)
+  -> schedule_change_event_to_order_cancellation
+  -> 旧 cancel
+```
+
+这意味着后续上层流程可以先接收统一 `schedule_change_event`，在调用阶段 B-I 之前再恢复成旧 `cancel`：
+
+```matlab
+cancel = schedule_change_event_to_order_cancellation(event);
+```
+
+阶段 B-I 因此不需要在阶段 J 被改写。统一事件框架的作用是提供更高一层的事件入口，而不是替换已经稳定的订单取消主线。
+
+## 18. Step J9 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 保留现有 `create_order_cancellation_event.m` | 通过，旧取消事件创建函数仍存在 |
+| 可把 `schedule_change_event` 转成旧 `cancel` | 通过，`schedule_change_event_to_order_cancellation.m` 已存在 |
+| 不强制一次性替换全部旧函数 | 通过，阶段 B-I 函数签名未在阶段 J 中改写 |
+| 统一事件框架作为上层入口存在 | 通过，`cancel_order` 可映射到旧 `cancel` 后进入阶段 B-I |
+| 阶段 B-I 测试不回退 | 待用户运行测试后记录结果；Step J8 测试已覆盖旧 `cancel` 恢复后仍通过已有取消事件校验 |
+| 新事件接口能表达旧取消事件 | 通过，`order_cancellation_to_schedule_change_event.m` 已实现 |
+| 不大规模重构已有取消代码 | 通过，Step J9 只确认兼容策略并更新文档 |
+
+Step J9 完成标志：阶段 J 已保持对现有订单取消链路的兼容。后续可以进入 Step J10：阶段 J 静态验收。
