@@ -334,3 +334,49 @@ result.isSelected
 | 不重写阶段 E/H 核心逻辑 | 通过，wrapper 复用已有评价和选择函数 |
 
 Step K6 完成标志：阶段 K 已能以独立 wrapper 的方式接入策略选择流程。后续可以进入 Step K7：写自适应权重单元测试。
+
+## 13. Step K7：写单元测试
+
+Step K7 新增自适应权重测试：
+
+```text
+tests/test_order_cancellation_adaptive_weights.m
+```
+
+运行入口：
+
+```matlab
+run('tests/test_order_cancellation_adaptive_weights.m')
+```
+
+测试覆盖内容：
+
+- 早期取消提高 `Cmax_delta` 权重。
+- 早期取消提高 `energy_delta` 权重。
+- 后期取消提高 `SD` 和 `TD` 权重。
+- 冻结比例高时提高扰动权重 `SD` 和 `TD`。
+- 剩余任务多时提高 `Cmax_delta` 和 `energy_delta` 权重。
+- 输出权重总和为 1。
+- unsupported 情况保留固定权重 baseline。
+- unsupported 情况记录 `unsupported_state_keep_baseline` 和应用规则。
+
+测试边界：
+
+- 不写 `outputs/`。
+- 不运行 NSGA-II。
+- 只使用最小构造数据。
+- 不训练模型。
+
+## 14. Step K7 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 早期取消提高 `Cmax_delta` 权重 | 通过，测试覆盖 `early_cancel_efficiency_focus` |
+| 后期取消提高 `SD` / `TD` 权重 | 通过，测试覆盖 `late_cancel_stability_focus` |
+| 冻结比例高时扰动权重提高 | 通过，测试覆盖 `high_frozen_ratio_stability_focus` |
+| 剩余任务多时 `Cmax_delta` / `energy_delta` 权重提高 | 通过，测试覆盖 `many_remaining_operations_efficiency_focus` |
+| 权重总和正确 | 通过，测试检查权重总和为 1 且非负 |
+| 固定权重 baseline 可保留 | 通过，unsupported 情况保留 baseline |
+| unsupported 情况能记录 | 通过，测试检查 `unsupported_state_keep_baseline` |
+
+Step K7 完成标志：自适应权重规则已有轻量单元测试。用户运行测试后，可将输出结果补充到本报告。
