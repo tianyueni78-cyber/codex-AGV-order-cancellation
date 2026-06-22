@@ -398,6 +398,53 @@ outputs/order_cancellation_benchmark_smoke/<timestamp>/benchmark_notes.md
 
 Step L8 完成标志：阶段 L 已有小规模 benchmark smoke 入口。后续可以手动运行 smoke，并把输出补入本报告；通过后再进入 Step L9 正式 benchmark。
 
+已收到一次 smoke 运行输出：
+
+```text
+order cancellation benchmark smoke
+dataset: data_sample/Mk01.fjs
+scenario_count: 6
+seed_count: 2
+strategy_count: 2
+result_row_count: 12
+output_dir: outputs/order_cancellation_benchmark_smoke/20260622_162245
+```
+
+对应输出目录：
+
+```text
+outputs/order_cancellation_benchmark_smoke/20260622_162245/
+```
+
+本次 smoke 结果解读：
+
+1. 一共生成了 6 个场景：`early/middle/late` 各自配合 `seed 1/2`。
+2. 每个场景分别比较 `fixed_weight` 和 `adaptive_weight`，因此得到 12 行原始结果。
+3. `middle_seed_1` 和 `middle_seed_2` 两个场景中，两种策略都成功选出了 `local_repair`。
+4. `early_seed_1`、`early_seed_2`、`late_seed_1`、`late_seed_2` 中，两种策略都没有选出可行候选。
+5. 从当前 smoke 看，固定权重和自适应权重的结果一致，还没有出现“自适应权重改变最终选择”的样例。
+
+本次 summary 关键信息：
+
+1. `strategy_summary.csv` 显示：
+   `fixed_weight` 的 `win_rate = 0.333333`，`infeasible_rate = 0.666667`；
+   `adaptive_weight` 的 `win_rate = 0.333333`，`infeasible_rate = 0.666667`。
+2. `feasibility_summary.csv` 显示：
+   `no_candidate_feasible = 8`，占比 `0.666667`；
+   `both_candidates_feasible = 4`，占比 `0.333333`。
+3. `scenario_summary.csv` 显示：
+   只有 `middle_seed_1` 和 `middle_seed_2` 的 `win_rate = 1.0`；
+   early 和 late 四个场景的 `win_rate = 0.0`，`infeasible_rate = 1.0`。
+
+这个 smoke 说明：
+
+1. 阶段 L 的输出链路已经打通，`seed_results.csv`、summary、json 和 notes 都能生成。
+2. 当前 Mk01 smoke 规模下，固定权重和自适应权重尚未拉开差异。
+3. 当前主要瓶颈不是“策略模式谁更好”，而是 early 和 late 这两类 smoke 场景下候选可行性不足。
+4. 因此，正式 benchmark 的价值会更多体现在：扩大场景库后，观察哪些时间窗口、哪些订单类别、哪些策略模式更稳定。
+
+该结果仍然只是 smoke 验证，不作为最终阶段 L 统计结论。
+
 ## 17. 阶段 L 测试和运行入口
 
 当前阶段 L 可手动运行的入口：
