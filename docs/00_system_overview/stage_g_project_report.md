@@ -13,6 +13,8 @@
 3. 旧拆分文档不再作为主要阅读入口。
 4. 后续如果更新阶段 G，只更新本文档。
 
+旧拆分文档仍保留为支持材料，入口见本文档末尾“支持文档入口”。
+
 ## 1. 实验输出
 
 本次阶段 G 实验入口：
@@ -256,3 +258,14 @@ test_order_cancellation_scenario_library_experiment_summary passed
 5. 结果已写入 `outputs/order_cancellation_scenario_library/20260621_150617/`。
 6. 能按 `time_window`、`job_category`、`seed` 和策略选择汇总。
 7. 已基于输出形成阶段 G 项目报告。
+
+## 14. 支持文档入口
+
+README 只挂阶段 G 主文档；阶段 G 拆分过的范围、场景结构、计划和工作记录可从这里进入：
+
+| 文档 | 用途 |
+|---|---|
+| [阶段 G 范围契约](stage_g_scope_contract.md) | 说明阶段 G 分为场景库生成和场景库实验，并限定不加入机器故障、新订单插入、强化学习等内容 |
+| [阶段 G 场景结构契约](stage_g_scenario_structure_contract.md) | 说明 `scenario_id`、dataset、seed、time_window、job_category 和 cancel 字段结构 |
+| [阶段 G 场景库计划](stage_g_scenario_library_plan.md) | 记录场景库配置、生成规则、job 分类规则和实验入口设计 |
+| [阶段 G 工作记录](stage_g_work_record.md) | 记录阶段 G 实现过程、测试入口、实验入口和过程性验收 |

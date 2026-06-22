@@ -190,3 +190,14 @@ selected_reason = no_feasible_candidate
 4. 对完全重调度接入正式 independent NSGA-II 搜索，而不是只用 first-choice 候选。
 5. 重新讨论 `Y` 的权重和 tie-break 规则，避免效率收益和扰动惩罚完全抵消后只能保守选择。
 6. 在阶段 G 之后再扩展连续取消、新订单插入、机器故障或强化学习。
+
+## 11. 支持文档入口
+
+README 只挂阶段 F 主文档；阶段 F 拆分过的范围、计划、分析模板和工作记录可从这里进入：
+
+| 文档 | 用途 |
+|---|---|
+| [阶段 F 范围契约](stage_f_scope_contract.md) | 说明阶段 F 只做单订单取消小规模实验，不混入机器故障、新订单插入、强化学习等内容 |
+| [阶段 F 工作计划](stage_f_work_plan.md) | 记录小规模实验配置、单场景运行、结果落盘、汇总和分析步骤 |
+| [阶段 F 分析模板](stage_f_result_analysis_template.md) | 给出按场景、策略、指标和不可行原因分析结果的模板 |
+| [阶段 F 工作记录](stage_f_work_record.md) | 记录阶段 F 开发过程、测试入口和过程性验收 |

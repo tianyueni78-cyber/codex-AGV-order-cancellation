@@ -85,3 +85,15 @@ docs/00_system_overview/baseline_call_chain_map.md
 ```text
 docs/00_system_overview/stage_b_work_record.md
 ```
+
+## 7. 支持文档入口
+
+README 只挂阶段 A 主文档；阶段 A 相关的补充说明从这里进入：
+
+| 文档 | 用途 |
+|---|---|
+| [源码迁移映射](source_code_migration_map.md) | 说明原 `codex-AGV` 源码迁移到当前仓库后的目录和职责 |
+| [基线调用链导读](baseline_call_chain_map.md) | 说明正常调度入口、数据读取、编码、解码、搜索和评价调用链 |
+| [入口脚本映射](entrypoint_map.md) | 辅助查找 small / independent / formal 等入口 |
+| [系统层级架构](system_layer_architecture.md) | 辅助理解数据层、编码层、解码层、搜索层、评价层之间的关系 |
+| [新手阅读导引](beginner_reading_guide.md) | 面向第一次阅读项目的人，给出读代码顺序 |

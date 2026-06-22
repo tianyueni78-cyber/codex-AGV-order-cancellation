@@ -428,3 +428,11 @@ Step E15 静态验收结果：
 8. 阶段边界：阶段 E 不是多随机种子正式实验，不包含机器故障、新订单插入或强化学习。
 
 因此，阶段 E 的主阅读入口只保留本文档；`stage_e_evaluation_contract.md` 可作为历史过程记录。
+
+## 15. 支持文档入口
+
+README 只挂阶段 E 主文档；阶段 E 的评价契约可从这里进入：
+
+| 文档 | 用途 |
+|---|---|
+| [阶段 E 评价契约](stage_e_evaluation_contract.md) | 阶段 E 早期用于明确 `Cmax_delta`、`SD`、`TD`、能耗、`Y`、baseline 和策略选择规则 |

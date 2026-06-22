@@ -291,3 +291,11 @@ unsupported_agv_tasks: 0
 5. 后续复用方式：阶段 C 使用取消列表做删除式局部修复，阶段 D 使用完成前缀和剩余任务集做完全重调度。
 
 因此，阶段 B 的主阅读入口只保留本文档；`order_cancellation_state_contract.md` 可作为历史过程记录。
+
+## 16. 支持文档入口
+
+README 只挂阶段 B 主文档；阶段 B 的状态分类契约可从这里进入：
+
+| 文档 | 用途 |
+|---|---|
+| [订单取消状态分类契约](order_cancellation_state_contract.md) | 阶段 B 早期用于定义 completed / processing / unstarted、unsupported 和边界条件的契约文档 |
