@@ -344,18 +344,73 @@ run('tests/test_order_cancellation_benchmark_summary.m')
 
 Step L7 完成标志：阶段 L 汇总函数已有独立测试入口。后续可以进入 Step L8：运行小规模 benchmark smoke。
 
-## 15. 阶段 L 测试和运行入口
+## 15. Step L8：运行小规模 benchmark smoke
+
+Step L8 新增小规模 benchmark smoke 脚本：
+
+```text
+scripts/run_order_cancellation_benchmark_smoke.m
+```
+
+运行入口：
+
+```matlab
+run('scripts/run_order_cancellation_benchmark_smoke.m')
+```
+
+smoke 范围：
+
+| 项目 | 设置 |
+|---|---|
+| dataset | `data_sample/Mk01.fjs` |
+| scenarios | early / middle / late 各 1 类 |
+| seeds | `[1, 2]` |
+| strategies | `fixed_weight` / `adaptive_weight` |
+| output base dir | `outputs/order_cancellation_benchmark_smoke` |
+
+输出文件：
+
+```text
+outputs/order_cancellation_benchmark_smoke/<timestamp>/seed_results.csv
+outputs/order_cancellation_benchmark_smoke/<timestamp>/scenario_summary.csv
+outputs/order_cancellation_benchmark_smoke/<timestamp>/strategy_summary.csv
+outputs/order_cancellation_benchmark_smoke/<timestamp>/feasibility_summary.csv
+outputs/order_cancellation_benchmark_smoke/<timestamp>/benchmark_summary.json
+outputs/order_cancellation_benchmark_smoke/<timestamp>/benchmark_notes.md
+```
+
+解释边界：
+
+1. smoke 用于验证 benchmark 输出链路，不作为最终结论。
+2. smoke 只覆盖 Mk01、3 类取消时刻、2 个 seed 和 2 类策略。
+3. smoke 会写入 `outputs/`，运行 MATLAB 前需要确认。
+4. smoke 不新增机器故障、完整插单、强化学习或全局最优证明。
+
+## 16. Step L8 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 能写入 `outputs/` | 通过，脚本输出到 `outputs/order_cancellation_benchmark_smoke/<timestamp>/` |
+| 能产生 `seed_results.csv` | 通过，脚本定义并写出 `seed_results.csv` |
+| 能产生 summary | 通过，脚本写出 scenario / strategy / feasibility summary 和 `benchmark_summary.json` |
+| 能对比 `fixed_weight` 和 `adaptive_weight` | 通过，脚本对两个 `strategy_mode` 分别写结果行 |
+| 不作为最终结论 | 通过，`benchmark_notes.md` 和本文档均说明 smoke 仅验证输出链路 |
+
+Step L8 完成标志：阶段 L 已有小规模 benchmark smoke 入口。后续可以手动运行 smoke，并把输出补入本报告；通过后再进入 Step L9 正式 benchmark。
+
+## 17. 阶段 L 测试和运行入口
 
 当前阶段 L 可手动运行的入口：
 
 ```matlab
 run('tests/test_order_cancellation_benchmark_summary.m')
+run('scripts/run_order_cancellation_benchmark_smoke.m')
 run('scripts/run_order_cancellation_benchmark.m')
 ```
 
-其中 `run_order_cancellation_benchmark.m` 会写入 `outputs/`，运行前需要确认；`test_order_cancellation_benchmark_summary.m` 不写 `outputs/`，只验证汇总逻辑。
+其中 `run_order_cancellation_benchmark_smoke.m` 和 `run_order_cancellation_benchmark.m` 会写入 `outputs/`，运行前需要确认；`test_order_cancellation_benchmark_summary.m` 不写 `outputs/`，只验证汇总逻辑。
 
-## 16. 支持文档入口
+## 18. 支持文档入口
 
 README 只挂阶段 L 主文档；阶段 L 依赖的上游文档可从这里进入。
 
