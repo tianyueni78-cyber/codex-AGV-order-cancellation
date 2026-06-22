@@ -251,7 +251,111 @@ run('scripts/run_order_cancellation_benchmark.m')
 
 Step L5 完成标志：阶段 L benchmark 运行入口已经建立，但尚未执行实验。后续可以进入 Step L6：实现或完善 benchmark 汇总测试。
 
-## 11. 支持文档入口
+## 11. Step L6：实现 benchmark 汇总函数
+
+Step L6 新增 benchmark 汇总函数：
+
+```text
+src/cancellation/summarize_order_cancellation_benchmark.m
+```
+
+汇总维度：
+
+1. `by_dataset`
+2. `by_scenario`
+3. `by_time_window`
+4. `by_job_category`
+5. `by_strategy_mode`
+6. `by_selected_strategy`
+7. `by_feasibility`
+
+统计指标：
+
+1. `mean`
+2. `std`
+3. `win_rate`
+4. `infeasible_rate`
+5. `selected_count`
+6. `no_feasible_candidate_count`
+
+指标字段：
+
+```text
+Cmax_delta
+SD
+TD
+energy_delta
+Y
+```
+
+第一版 `win_rate` 定义为 `is_selected == true` 的比例；`infeasible_rate` 定义为 `no_feasible_candidate == true` 的比例。它们用于阶段 L 统计验证，不表示全局最优胜率。
+
+## 12. Step L6 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 能计算均值 | 通过，汇总函数为每个指标输出 `_mean` |
+| 能计算标准差 | 通过，汇总函数为每个指标输出 `_std` |
+| 能计算策略胜率 | 通过，输出 `win_rate` |
+| 能计算不可行率 | 通过，输出 `infeasible_rate` |
+| 能区分固定权重和自适应权重 | 通过，输出 `by_strategy_mode` |
+
+Step L6 完成标志：benchmark 汇总函数已经独立出来，脚本也可复用该函数写出 summary。
+
+## 13. Step L7：补充统计测试
+
+Step L7 新增统计测试：
+
+```text
+tests/test_order_cancellation_benchmark_summary.m
+```
+
+运行入口：
+
+```matlab
+run('tests/test_order_cancellation_benchmark_summary.m')
+```
+
+测试内容：
+
+1. 构造最小 benchmark 结果。
+2. 验证均值。
+3. 验证标准差。
+4. 验证胜率。
+5. 验证不可行率。
+6. 验证按 dataset 汇总。
+7. 验证按 strategy 汇总。
+
+测试边界：
+
+1. 不写 `outputs/`。
+2. 不运行 NSGA-II。
+3. 只验证汇总逻辑。
+4. 不启动 benchmark 实验。
+
+## 14. Step L7 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 测试不写 `outputs/` | 通过，测试只构造内存结构体 |
+| 测试不运行 NSGA-II | 通过，测试只调用汇总函数 |
+| 只验证汇总逻辑 | 通过 |
+| 不启动 benchmark 实验 | 通过 |
+
+Step L7 完成标志：阶段 L 汇总函数已有独立测试入口。后续可以进入 Step L8：运行小规模 benchmark smoke。
+
+## 15. 阶段 L 测试和运行入口
+
+当前阶段 L 可手动运行的入口：
+
+```matlab
+run('tests/test_order_cancellation_benchmark_summary.m')
+run('scripts/run_order_cancellation_benchmark.m')
+```
+
+其中 `run_order_cancellation_benchmark.m` 会写入 `outputs/`，运行前需要确认；`test_order_cancellation_benchmark_summary.m` 不写 `outputs/`，只验证汇总逻辑。
+
+## 16. 支持文档入口
 
 README 只挂阶段 L 主文档；阶段 L 依赖的上游文档可从这里进入。
 

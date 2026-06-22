@@ -363,7 +363,18 @@ end
 end
 
 function write_group_summary_csv(filePath, rows, groupField)
-groupRows = summarize_group(rows, groupField);
+summary = summarize_order_cancellation_benchmark(rows);
+switch groupField
+    case 'scenario_id'
+        groupRows = summary.by_scenario;
+    case 'dataset'
+        groupRows = summary.by_dataset;
+    case 'strategy_mode'
+        groupRows = summary.by_strategy_mode;
+    otherwise
+        error('run_order_cancellation_benchmark:UnsupportedGroupField', ...
+            'Unsupported group field: %s', groupField);
+end
 fid = fopen(filePath, 'w');
 if fid < 0
     error('run_order_cancellation_benchmark:FileOpenFailed', ...
@@ -371,32 +382,26 @@ if fid < 0
 end
 cleanup = onCleanup(@() fclose(fid));
 
-fprintf(fid, ['group,run_count,selected_count,constraint_feasible_count,', ...
-    'no_feasible_candidate_count,Cmax_delta_mean,Cmax_delta_std,', ...
+fprintf(fid, ['group,run_count,selected_count,win_rate,', ...
+    'no_feasible_candidate_count,infeasible_rate,Cmax_delta_mean,Cmax_delta_std,', ...
     'SD_mean,SD_std,TD_mean,TD_std,energy_delta_mean,', ...
-    'energy_delta_std,Y_mean,Y_std,runtime_seconds_mean,', ...
-    'error_count,rejected_reason_count\n']);
+    'energy_delta_std,Y_mean,Y_std\n']);
 
 for i = 1:numel(groupRows)
     row = groupRows(i);
-    fprintf(fid, ['%s,%d,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,', ...
-        '%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%d\n'], ...
-        csv_text(row.group), row.run_count, row.selected_count, ...
-        row.constraint_feasible_count, row.no_feasible_candidate_count, ...
+    fprintf(fid, ['%s,%d,%d,%.6f,%d,%.6f,%.6f,%.6f,%.6f,', ...
+        '%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n'], ...
+        csv_text(row.(groupField)), row.run_count, row.selected_count, ...
+        row.win_rate, row.no_feasible_candidate_count, row.infeasible_rate, ...
         row.Cmax_delta_mean, row.Cmax_delta_std, row.SD_mean, row.SD_std, ...
         row.TD_mean, row.TD_std, row.energy_delta_mean, ...
-        row.energy_delta_std, row.Y_mean, row.Y_std, ...
-        row.runtime_seconds_mean, row.error_count, ...
-        row.rejected_reason_count);
+        row.energy_delta_std, row.Y_mean, row.Y_std);
 end
 end
 
 function write_feasibility_summary_csv(filePath, rows)
-labels = cell(1, numel(rows));
-for i = 1:numel(rows)
-    labels{i} = feasibility_label(rows(i));
-end
-groups = unique(labels, 'stable');
+summary = summarize_order_cancellation_benchmark(rows);
+groups = summary.by_feasibility;
 
 fid = fopen(filePath, 'w');
 if fid < 0
@@ -405,10 +410,10 @@ if fid < 0
 end
 cleanup = onCleanup(@() fclose(fid));
 
-fprintf(fid, 'feasibility,count\n');
+fprintf(fid, 'feasibility,count,rate\n');
 for i = 1:numel(groups)
-    fprintf(fid, '%s,%d\n', csv_text(groups{i}), ...
-        sum(strcmp(labels, groups{i})));
+    fprintf(fid, '%s,%d,%.6f\n', csv_text(groups(i).feasibility), ...
+        groups(i).count, groups(i).rate);
 end
 end
 
