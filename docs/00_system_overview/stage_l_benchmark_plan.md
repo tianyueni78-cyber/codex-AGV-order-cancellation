@@ -103,7 +103,66 @@ output_base_dir: outputs/order_cancellation_benchmark
 
 Step L2 完成标志：阶段 L benchmark 配置入口已经建立。后续可以进入 Step L3：定义 benchmark 单次运行结果结构。
 
-## 5. 支持文档入口
+## 5. Step L3：定义 benchmark 输出结构
+
+Step L3 定义阶段 L benchmark 的标准输出目录和文件结构。后续运行脚本必须写入 timestamp 子目录，避免覆盖旧实验结果。
+
+建议输出目录：
+
+```text
+outputs/order_cancellation_benchmark/<timestamp>/
+```
+
+建议输出文件：
+
+```text
+benchmark_config_used.yaml
+seed_results.csv
+scenario_summary.csv
+dataset_summary.csv
+strategy_summary.csv
+feasibility_summary.csv
+benchmark_summary.json
+benchmark_notes.md
+```
+
+输出文件含义：
+
+| 文件 | 含义 |
+|---|---|
+| `benchmark_config_used.yaml` | 记录本次 benchmark 实际使用的配置，包含数据集、场景库配置、策略列表、seed、运行预算和输出目录 |
+| `seed_results.csv` | 保存每个 dataset / scenario / strategy / seed 的原始结果，保证每个 seed 可追踪 |
+| `scenario_summary.csv` | 按场景汇总均值、标准差、可行率、胜率和不可行原因数量 |
+| `dataset_summary.csv` | 按数据集汇总各策略的整体表现 |
+| `strategy_summary.csv` | 分开统计 `fixed_weight` 和 `adaptive_weight` 的指标均值、标准差、胜率和选择次数 |
+| `feasibility_summary.csv` | 汇总局部修复、完全重调度、固定权重策略和自适应权重策略的可行性结果 |
+| `benchmark_summary.json` | 保存机器可读的总摘要，包括运行时间、配置摘要、样本数量、策略胜率和主要限制 |
+| `benchmark_notes.md` | 保存人工可读说明，解释本次 benchmark 的范围、运行预算、异常情况和结论边界 |
+
+输出结构要求：
+
+1. 每个输出目录必须带 timestamp。
+2. 不覆盖旧的 benchmark 输出目录。
+3. 每个 seed 的原始结果必须保留在 `seed_results.csv`。
+4. 场景、数据集、策略和可行性必须分别有汇总表。
+5. 固定权重和自适应权重必须能分开统计。
+6. 结论必须说明统计范围，不能声称全局最优。
+
+阶段 L3 只定义输出结构，不创建 `outputs/`，不运行 benchmark。
+
+## 6. Step L3 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 每个 seed 原始结果可追踪 | 通过，定义 `seed_results.csv` 保存每个 seed 的原始结果 |
+| 每个场景有汇总 | 通过，定义 `scenario_summary.csv` |
+| 每个数据集有汇总 | 通过，定义 `dataset_summary.csv` |
+| 固定权重和自适应权重能分开统计 | 通过，定义 `strategy_summary.csv` 并要求按 `fixed_weight` / `adaptive_weight` 分组 |
+| 输出目录带 timestamp，不覆盖旧结果 | 通过，定义 `outputs/order_cancellation_benchmark/<timestamp>/` |
+
+Step L3 完成标志：阶段 L benchmark 的落盘结构已经固定。后续可以进入 Step L4：实现 benchmark 单次结果行结构。
+
+## 7. 支持文档入口
 
 README 只挂阶段 L 主文档；阶段 L 依赖的上游文档可从这里进入。
 
