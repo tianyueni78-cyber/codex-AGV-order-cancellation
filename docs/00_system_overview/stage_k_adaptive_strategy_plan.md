@@ -89,3 +89,56 @@ features.unsupported_flag
 | 不依赖 `outputs/` | 通过，特征从内存中的状态和候选结构提取 |
 
 Step K2 完成标志：阶段 K 的自适应特征集合已经固定。后续可以进入 Step K3：实现特征提取函数。
+
+## 5. Step K3：实现特征提取函数
+
+Step K3 新增特征提取函数：
+
+```text
+src/cancellation/extract_cancellation_features.m
+```
+
+函数入口：
+
+```matlab
+features = extract_cancellation_features( ...
+    baselineSchedule, ...
+    state, ...
+    cancel, ...
+    localRepairCandidate, ...
+    completeReschedulingCandidate)
+```
+
+第一版计算口径：
+
+| 特征 | 计算方式 |
+|---|---|
+| `cancel_time_ratio` | `cancel.cancel_time / baseline_Cmax`，其中 `baseline_Cmax` 来自基线 `machineTable` 真实工序最大结束时间 |
+| `remaining_operation_count` | `numel(state.remaining_unfinished_operations)` |
+| `cancelled_operation_count` | `numel(state.cancelled_unfinished_operations)` |
+| `frozen_operation_ratio` | `numel(state.completed_operations) / state.operation_count` |
+| `remaining_agv_task_count` | `state.agv_task_count - completed_agv_tasks - cancelled_unfinished_agv_tasks` |
+| `cancelled_agv_task_count` | `numel(state.cancelled_unfinished_agv_tasks)` |
+| `local_repair_feasible` | `localRepairCandidate.isFeasible` |
+| `complete_rescheduling_feasible` | `completeReschedulingCandidate.isFeasible` |
+| `unsupported_flag` | 阶段 B 的 `has_unsupported_operations`、`has_unsupported_agv_tasks` 或 unsupported 列表非空 |
+
+边界约定：
+
+- `baselineSchedule.machineTable` 必须存在，并用于计算基线 `Cmax`。
+- 若候选缺少 `isFeasible` 字段，第一版按 `false` 处理。
+- 若分母为 0，比例特征按 0 处理，避免在最小构造数据中产生除零错误。
+- 函数只提取特征，不修改候选，不重新评价，不写 `outputs/`。
+
+## 6. Step K3 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 能计算取消时刻比例 | 通过，使用 `cancel.cancel_time / baseline_Cmax` |
+| 能计算剩余工序数 | 通过，读取 `state.remaining_unfinished_operations` |
+| 能计算被取消工序数 | 通过，读取 `state.cancelled_unfinished_operations` |
+| 能计算冻结任务比例 | 通过，使用 `completed_operations / operation_count` |
+| 能记录两个候选可行性 | 通过，读取局部修复和完全重调度候选的 `isFeasible` |
+| unsupported 情况能进入特征 | 通过，输出 `features.unsupported_flag` |
+
+Step K3 完成标志：阶段 K 已具备从阶段 B-H 结构中提取自适应策略特征的函数。后续可以进入 Step K4：定义规则式权重调整策略。
