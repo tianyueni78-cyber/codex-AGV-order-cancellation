@@ -380,3 +380,67 @@ run('tests/test_order_cancellation_adaptive_weights.m')
 | unsupported 情况能记录 | 通过，测试检查 `unsupported_state_keep_baseline` |
 
 Step K7 完成标志：自适应权重规则已有轻量单元测试。用户运行测试后，可将输出结果补充到本报告。
+
+## 15. Step K8：样例 smoke 脚本
+
+Step K8 新增样例 smoke 脚本：
+
+```text
+scripts/run_order_cancellation_adaptive_strategy_smoke.m
+```
+
+运行入口：
+
+```matlab
+run('scripts/run_order_cancellation_adaptive_strategy_smoke.m')
+```
+
+脚本流程：
+
+1. 使用 `data_sample/Mk01.fjs`。
+2. 构造一个订单取消事件。
+3. 提取取消时刻状态。
+4. 构造局部修复候选。
+5. 构造完全重调度候选。
+6. 提取自适应特征。
+7. 生成自适应权重。
+8. 使用固定权重评价并选择一次。
+9. 使用自适应权重评价并选择一次。
+10. 打印特征、固定权重、自适应权重、应用规则和最终选择结果。
+
+打印内容包括：
+
+- `features.cancel_time_ratio`
+- `features.remaining_operation_count`
+- `features.cancelled_operation_count`
+- `features.frozen_operation_ratio`
+- `features.remaining_agv_task_count`
+- `features.cancelled_agv_task_count`
+- `features.local_repair_feasible`
+- `features.complete_rescheduling_feasible`
+- `features.unsupported_flag`
+- `fixed_weights.*`
+- `adaptive_weights.*`
+- `adaptive_report.applied_rule_*`
+- `fixed_selection.*`
+- `adaptive_selection.*`
+
+边界说明：
+
+- 不写 `outputs/`。
+- 不训练模型。
+- 不运行正式多随机种子实验。
+- 不替换固定权重 baseline。
+
+## 16. Step K8 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 能打印特征 | 通过，脚本打印 `features.*` |
+| 能打印自适应权重 | 通过，脚本打印 `adaptive_weights.*` |
+| 能打印应用规则 | 通过，脚本打印 `adaptive_report.applied_rule_*` |
+| 能打印最终选择结果 | 通过，脚本打印固定权重和自适应权重的 selection |
+| 不写 `outputs/` | 通过，脚本不创建输出目录、不写文件 |
+| 不训练模型 | 通过，脚本只调用规则式自适应权重函数 |
+
+Step K8 完成标志：阶段 K 已有样例 smoke 入口。用户运行后可将输出结果补充到本报告。
