@@ -532,3 +532,24 @@ test_order_cancellation_sequential_events passed
 - 后续可以进入阶段 K：自适应策略选择，或继续扩展插单侧任务集合更新。
 
 阶段 J 完成结论：阶段 J 已形成统一订单变更事件接口，并保持对阶段 B-I 订单取消链路的兼容。当前项目仍未实现完整新订单插入调度算法；插单侧保持为接口预留和 `pending` 状态。
+
+## 21. 支持文档入口
+
+README 只挂阶段 J 主文档；阶段 J 相关的解释文档和上下游阶段文档可从这里进入。这样既保持 README 简洁，也能从阶段 J 追溯“订单取消和新订单插入为什么不是两套完全独立系统”。
+
+| 文档 | 和阶段 J 的关系 |
+|---|---|
+| [项目目标与分阶段工作流](project_goal_workflow.md) | 说明订单取消、新订单插入、连续取消、机器故障和强化学习的阶段边界 |
+| [阶段 B：订单取消事件与状态提取](stage_b_work_record.md) | 解释旧 `cancel` 结构、取消时刻状态提取和 completed / processing / unstarted 分类 |
+| [订单取消状态分类契约](order_cancellation_state_contract.md) | 阶段 B 的历史契约文档，细化状态分类边界和 unsupported 规则 |
+| [阶段 C：局部修复候选方案](stage_c_work_record.md) | 说明 `cancel_order` 删除未完成任务后如何形成局部修复候选 |
+| [阶段 C 局部修复契约](stage_c_local_repair_contract.md) | 阶段 C 的历史契约文档，说明删除式局部修复的输入、输出和可行性边界 |
+| [阶段 D：完全重调度候选方案](stage_d_work_record.md) | 说明冻结任务、排除取消任务和重调度剩余任务的候选生成方式 |
+| [阶段 D 输入输出契约](stage_d_complete_rescheduling_contract.md) | 阶段 D 的历史契约文档，细化冻结前缀、剩余任务集合和合并规则 |
+| [阶段 E：评价与策略选择](stage_e_work_record.md) | 说明统一事件后不同候选仍通过同一套 `Cmax_delta`、`SD`、`TD`、能耗和 `Y` 评价 |
+| [阶段 E 评价契约](stage_e_evaluation_contract.md) | 阶段 E 的历史契约文档，细化评价指标、baseline 和归一化规则 |
+| [阶段 H：混合修复策略报告](stage_h_hybrid_policy_report.md) | 说明在局部修复和完全重调度之间如何形成第一版混合策略 |
+| [阶段 H 混合策略计划](stage_h_hybrid_policy_plan.md) | 阶段 H 的过程计划文档，记录触发规则、配置和测试设计 |
+| [阶段 I：多订单连续取消项目报告](stage_i_sequential_cancellation_report.md) | 说明多个 `cancel_order` 事件如何按时间顺序回放，并防止已取消订单回流 |
+| [阶段 K：自适应策略选择](stage_k_adaptive_strategy_plan.md) | 说明统一事件结构后，后续如何按场景特征自适应调整评价权重或选择规则 |
+| [阶段 G-N 后续路线图](post_stage_f_flexible_dispatch_roadmap.md) | 说明阶段 J 在长期路线中的位置：从订单取消扩展到订单变更统一框架 |
