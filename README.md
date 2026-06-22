@@ -225,6 +225,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 H：混合修复策略报告](docs/00_system_overview/stage_h_hybrid_policy_report.md) | 阶段 H 的配置、触发规则、测试入口、smoke 入口、局限和阶段 I 入口 |
 | [阶段 I：多订单连续取消项目报告](docs/00_system_overview/stage_i_sequential_cancellation_report.md) | 阶段 I 的连续取消目标、输入契约、事件结构、不回流规则、测试入口、smoke 入口、局限和阶段 J 入口 |
 | [阶段 J：订单变更统一框架](docs/00_system_overview/stage_j_order_change_framework_plan.md) | 统一事件结构、取消映射、插单预留、任务集合变化语义、K/L 后续入口 |
+| [阶段 K：自适应策略选择](docs/00_system_overview/stage_k_adaptive_strategy_plan.md) | 规则式自适应权重、特征定义、测试入口、smoke 输出、局限和阶段 L 入口 |
 | [阶段 G-N 后续路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 从第一版闭环走向更灵活订单取消调度的后续阶段 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 仓库目录和关键文件用途说明 |
 

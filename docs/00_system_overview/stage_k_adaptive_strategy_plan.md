@@ -443,4 +443,93 @@ run('scripts/run_order_cancellation_adaptive_strategy_smoke.m')
 | 不写 `outputs/` | 通过，脚本不创建输出目录、不写文件 |
 | 不训练模型 | 通过，脚本只调用规则式自适应权重函数 |
 
-Step K8 完成标志：阶段 K 已有样例 smoke 入口。用户运行后可将输出结果补充到本报告。
+已收到的 smoke 输出摘要：
+
+| 字段 | 结果 | 含义 |
+|---|---:|---|
+| `cancel.job_id` | 2 | 本次样例取消第 2 个订单 |
+| `cancel.cancel_time` | 10.000000 | 取消发生在样例时间 10 |
+| `local_candidate.isFeasible` | 1 | 局部修复候选可行 |
+| `complete_candidate.isFeasible` | 1 | 完全重调度候选可行 |
+| `features.cancel_time_ratio` | 0.555556 | 取消处于中期区间 |
+| `features.remaining_operation_count` | 2 | 取消后仍有 2 个剩余机器工序 |
+| `features.cancelled_operation_count` | 1 | 被取消订单有 1 个未完成工序 |
+| `features.frozen_operation_ratio` | 0.500000 | 已完成冻结工序占一半 |
+| `features.remaining_agv_task_count` | 2 | 仍有 2 个剩余 AGV 任务 |
+| `features.cancelled_agv_task_count` | 1 | 被取消订单有 1 个未完成 AGV 任务 |
+| `features.unsupported_flag` | 0 | 没有正在加工或正在运输的 unsupported 状态 |
+
+权重和选择结果：
+
+| 项目 | 固定权重 | 自适应权重 |
+|---|---:|---:|
+| `Cmax_delta` | 0.250000 | 0.250000 |
+| `SD` | 0.250000 | 0.250000 |
+| `TD` | 0.250000 | 0.250000 |
+| `energy_delta` | 0.250000 | 0.250000 |
+| selected strategy | `complete_rescheduling` | `complete_rescheduling` |
+| selected reason | `smaller_Y` | `smaller_Y` |
+| selected Y | 0.250000 | 0.250000 |
+
+应用规则：
+
+```text
+adaptive_report.applied_rule_1: middle_cancel_balanced
+adaptive_report.reason: baseline_weights
+adaptive_report.isAdaptive: 0
+```
+
+数据含义：
+
+- 本次样例属于中期取消，触发 `middle_cancel_balanced`。
+- 中期取消规则强调四个指标平衡，因此自适应权重保持等权重 baseline。
+- 固定权重和自适应权重都选择 `complete_rescheduling`，原因都是 `smaller_Y`。
+- `adaptive_report.isAdaptive = 0` 不代表函数无效，而是说明当前场景没有触发偏效率或偏稳定的权重调整。
+
+Step K8 完成标志：阶段 K 样例 smoke 已运行并补充结果。该 smoke 说明中期取消场景下自适应规则能够识别平衡场景并保留 baseline。
+
+## 17. Step K9：阶段 K 文档
+
+本文档是阶段 K 的唯一主文档，集中记录规则式自适应策略选择的目标、接口、测试入口、smoke 输出和边界。
+
+阶段 K 第一版不使用强化学习，原因如下：
+
+- 当前样本量不足以支撑稳定训练。
+- 规则式自适应更容易解释每次权重变化。
+- 阶段 K 的目标是先验证“特征驱动的权重调整”是否可运行。
+- 强化学习更适合作为后续创新方向，用于策略选择或搜索预算分配，而不是直接替代底层解码器。
+
+阶段 K 已覆盖：
+
+| 内容 | 对应说明 |
+|---|---|
+| 阶段 K 目标 | 根据场景特征调整评价权重或选择规则 |
+| 特征定义 | `cancel_time_ratio`、剩余工序、冻结比例、候选可行性、unsupported 等 |
+| 权重调整规则 | 早期偏效率，后期偏稳定，中期保持平衡 |
+| 固定权重 baseline | 保留阶段 E/H 原固定权重流程 |
+| 自适应权重流程 | 提取特征、生成权重、重新评价、复用已有策略选择 |
+| 测试入口 | `run('tests/test_order_cancellation_adaptive_weights.m')` |
+| smoke 入口 | `run('scripts/run_order_cancellation_adaptive_strategy_smoke.m')` |
+
+局限：
+
+- 阶段 K 只做规则式自适应，不训练分类器。
+- 阶段 K 不使用强化学习。
+- 阶段 K 不重写局部修复、完全重调度、评价函数或底层解码器。
+- 当前权重阈值仍需要阶段 L 用更多实例和随机种子验证。
+- 当前 smoke 只是单样例，不是最终研究结论。
+
+阶段 L 入口：
+
+阶段 L 建议进入“大规模与统计验证”，用更多数据集、取消时刻、订单类型和随机种子检验规则式自适应权重是否稳定，并比较固定权重 baseline 与自适应权重策略的表现差异。
+
+## 18. Step K9 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| README 挂阶段 K 一个主入口 | 通过，README 已挂 `stage_k_adaptive_strategy_plan.md` |
+| 文档说明阶段 K 是规则式自适应 | 通过 |
+| 文档说明强化学习只是后续创新方向 | 通过 |
+| 文档说明样本太少时不训练模型 | 通过 |
+
+Step K9 完成标志：阶段 K 文档已整理为主入口，README 已挂阶段 K 一个主入口。
