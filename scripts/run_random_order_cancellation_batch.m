@@ -701,6 +701,12 @@ if ~isempty(machineReason)
     return
 end
 
+scheduledAgvReason = summarize_processing_agv_task_reason(candidate, report);
+if ~isempty(scheduledAgvReason)
+    errorText = scheduledAgvReason;
+    return
+end
+
 agvReason = classify_check_report(report, 'agvConflictCheck', ...
     'agv overlap', 'missing schedule');
 if strcmp(agvReason, 'canceled order still scheduled') && ...
@@ -1135,6 +1141,12 @@ if ~isempty(machineReason)
     return
 end
 
+scheduledAgvReason = summarize_processing_agv_task_reason(candidate, report);
+if ~isempty(scheduledAgvReason)
+    reason = scheduledAgvReason;
+    return
+end
+
 agvReason = summarize_check_gate_failure(report, 'agvConflictCheck', ...
     'agv overlap');
 if ~isempty(agvReason)
@@ -1228,6 +1240,32 @@ if isempty(reason)
     reason = [fallbackText, ': validation report empty'];
 else
     reason = [fallbackText, ': ', reason];
+end
+end
+
+function reason = summarize_processing_agv_task_reason(candidate, report)
+reason = '';
+messages = {};
+
+if isstruct(candidate) && isfield(candidate, 'report') && ...
+        isstruct(candidate.report) && ...
+        isfield(candidate.report, 'rejectedReasons') && ...
+        iscell(candidate.report.rejectedReasons)
+    messages = [messages, candidate.report.rejectedReasons];
+end
+
+if isstruct(report) && isfield(report, 'rejectedReasons') && ...
+        iscell(report.rejectedReasons)
+    messages = [messages, report.rejectedReasons];
+end
+
+if isempty(messages)
+    return
+end
+
+joinedMessages = lower(strjoin(messages, ' | '));
+if contains(joinedMessages, 'processing agv tasks')
+    reason = 'canceled order still scheduled: processing AGV tasks';
 end
 end
 
