@@ -620,14 +620,14 @@ joinedReasons = lower(strjoin(reasons, ' | '));
 if contains(joinedReasons, 'candidate_infeasible')
     status = 'infeasible_candidate';
     errorText = summarize_validation_failure(candidate, evaluation, ...
-        cancel, candidateName);
+        selectionStatus, cancel, candidateName);
     errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
         report, evaluation, candidateName);
 elseif contains(joinedReasons, 'evaluation_infeasible') || ...
         contains(joinedReasons, 'invalid_evaluation')
     status = 'rejected_by_validation';
     errorText = summarize_validation_failure(candidate, evaluation, ...
-        cancel, candidateName);
+        selectionStatus, cancel, candidateName);
     errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
         report, evaluation, candidateName);
 elseif contains(joinedReasons, 'missing_y')
@@ -642,7 +642,7 @@ else
     if strcmp(errorText, 'unknown') && is_evaluation_infeasible(evaluation)
         status = 'rejected_by_validation';
         errorText = summarize_validation_failure(candidate, evaluation, ...
-            cancel, candidateName);
+            selectionStatus, cancel, candidateName);
         errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
             report, evaluation, candidateName);
     elseif strcmp(errorText, 'unknown')
@@ -657,7 +657,7 @@ if strcmp(errorText, 'canceled order still scheduled')
         errorText = [errorText, ': ', residualSummary];
     else
         fallbackReason = summarize_validation_failure(candidate, ...
-            evaluation, cancel, candidateName);
+            evaluation, selectionStatus, cancel, candidateName);
         if ~strcmp(fallbackReason, 'unknown validation failure')
             errorText = fallbackReason;
         else
@@ -668,7 +668,7 @@ end
 end
 
 function errorText = summarize_validation_failure(candidate, evaluation, ...
-    cancel, candidateName)
+    selectionStatus, cancel, candidateName)
 errorText = 'unknown validation failure';
 
 if isempty_candidate(candidate)
@@ -748,6 +748,14 @@ if isstruct(evaluation) && isfield(evaluation, 'report') && ...
             iscell(evaluation.report.errors) && ...
             ~isempty(evaluation.report.errors)
         errorText = classify_evaluation_messages(evaluation.report.errors);
+        if strcmp(errorText, 'candidate not added to feasible pool')
+            gateReason = summarize_pool_gate_failure(candidate, evaluation, ...
+                selectionStatus, report, candidateName);
+            if ~isempty(gateReason)
+                errorText = ['candidate not added to feasible pool: ', ...
+                    gateReason];
+            end
+        end
         if strcmp(errorText, 'canceled order still scheduled') && ...
                 isempty(summarize_canceled_order_residual(candidate, cancel))
             errorText = 'unknown validation failure';
@@ -759,6 +767,14 @@ if isstruct(evaluation) && isfield(evaluation, 'report') && ...
             ~isempty(evaluation.report.rejectedReasons)
         errorText = classify_evaluation_messages( ...
             evaluation.report.rejectedReasons);
+        if strcmp(errorText, 'candidate not added to feasible pool')
+            gateReason = summarize_pool_gate_failure(candidate, evaluation, ...
+                selectionStatus, report, candidateName);
+            if ~isempty(gateReason)
+                errorText = ['candidate not added to feasible pool: ', ...
+                    gateReason];
+            end
+        end
         if strcmp(errorText, 'canceled order still scheduled') && ...
                 isempty(summarize_canceled_order_residual(candidate, cancel))
             errorText = 'unknown validation failure';
@@ -768,7 +784,13 @@ if isstruct(evaluation) && isfield(evaluation, 'report') && ...
 end
 
 if isfield(candidate, 'isFeasible') && ~logical(candidate.isFeasible)
-    errorText = 'candidate not added to feasible pool';
+    gateReason = summarize_pool_gate_failure(candidate, evaluation, ...
+        selectionStatus, report, candidateName);
+    if isempty(gateReason)
+        errorText = 'candidate not added to feasible pool';
+    else
+        errorText = ['candidate not added to feasible pool: ', gateReason];
+    end
 end
 
 [rawMessage, hasValidationInfo] = extract_first_validation_message( ...
@@ -1089,6 +1111,123 @@ if strcmp(reason, 'unknown validation failure')
             contains(joinedMessages, 'objective')
         reason = 'missing objective';
     end
+end
+end
+
+function reason = summarize_pool_gate_failure(candidate, evaluation, ...
+    selectionStatus, report, candidateName)
+reason = '';
+
+if ~isstruct(candidate)
+    reason = 'missing candidate';
+    return
+end
+
+if ~isfield(candidate, 'machineTable') || ~isfield(candidate, 'AGVTable')
+    reason = 'missing candidate schedule';
+    return
+end
+
+machineReason = summarize_check_gate_failure(report, 'machineConflictCheck', ...
+    'machine overlap');
+if ~isempty(machineReason)
+    reason = machineReason;
+    return
+end
+
+agvReason = summarize_check_gate_failure(report, 'agvConflictCheck', ...
+    'agv overlap');
+if ~isempty(agvReason)
+    reason = agvReason;
+    return
+end
+
+sequenceReason = summarize_check_gate_failure(report, 'jobSequenceCheck', ...
+    'precedence violation');
+if ~isempty(sequenceReason)
+    reason = sequenceReason;
+    return
+end
+
+if ~isstruct(evaluation) || ~isfield(evaluation, 'metrics') || ...
+        ~isstruct(evaluation.metrics)
+    reason = 'metric evaluation missing';
+    return
+end
+
+if ~isfield(evaluation.metrics, 'isFeasible') || ...
+        ~logical(evaluation.metrics.isFeasible)
+    metricReason = summarize_metric_evaluation_failure(evaluation);
+    if ~isempty(metricReason)
+        reason = ['metric_evaluation_failed: ', metricReason];
+    else
+        reason = 'metric evaluation missing';
+    end
+    return
+end
+
+if ~isstruct(selectionStatus) || isempty(fieldnames(selectionStatus))
+    reason = 'selection status missing';
+    return
+end
+
+if isfield(report, 'errors') && iscell(report.errors) && ~isempty(report.errors)
+    reason = classify_message_list(report.errors, candidateName);
+    if ~strcmp(reason, 'unknown validation failure')
+        reason = ['validation failed after prune: ', reason];
+        return
+    end
+end
+
+if isfield(report, 'rejectedReasons') && iscell(report.rejectedReasons) && ...
+        ~isempty(report.rejectedReasons)
+    reason = classify_message_list(report.rejectedReasons, candidateName);
+    if ~strcmp(reason, 'unknown validation failure')
+        reason = ['validation failed after prune: ', reason];
+        return
+    end
+end
+
+if isfield(candidate, 'report') && isstruct(candidate.report)
+    reason = 'isFeasible=false without rejectedReasons';
+else
+    reason = 'pool add condition false';
+end
+end
+
+function reason = summarize_check_gate_failure(report, fieldName, fallbackText)
+reason = '';
+if ~isstruct(report) || ~isfield(report, fieldName) || ...
+        ~isstruct(report.(fieldName))
+    return
+end
+
+checkReport = report.(fieldName);
+if isfield(checkReport, 'isFeasible') && logical(checkReport.isFeasible)
+    return
+end
+
+if isfield(checkReport, 'errors') && iscell(checkReport.errors) && ...
+        ~isempty(checkReport.errors)
+    reason = classify_message_list(checkReport.errors, fieldName);
+    if strcmp(reason, 'unknown validation failure')
+        reason = '';
+    end
+elseif isfield(checkReport, 'rejectedReasons') && ...
+        iscell(checkReport.rejectedReasons) && ...
+        ~isempty(checkReport.rejectedReasons)
+    reason = classify_message_list(checkReport.rejectedReasons, fieldName);
+    if strcmp(reason, 'unknown validation failure')
+        reason = '';
+    end
+else
+    reason = '';
+end
+
+if isempty(reason)
+    reason = [fallbackText, ': validation report empty'];
+else
+    reason = [fallbackText, ': ', reason];
 end
 end
 
