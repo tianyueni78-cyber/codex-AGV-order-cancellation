@@ -16,6 +16,8 @@ addpath(fullfile(projectRoot, 'src', 'data'));
 addpath(fullfile(projectRoot, 'src', 'encoding'));
 addpath(fullfile(projectRoot, 'src', 'decoding'));
 addpath(fullfile(projectRoot, 'src', 'evaluation'));
+addpath(fullfile(projectRoot, 'src', 'search'));
+addpath(fullfile(projectRoot, 'src', 'baseline'));
 
 if ~exist('seeds', 'var')
     seeds = 1:30;
@@ -38,6 +40,15 @@ end
 if ~exist('baseline_mode', 'var')
     baseline_mode = 'sample';
 end
+if ~exist('baselinePop', 'var')
+    baselinePop = 20;
+end
+if ~exist('baselineMaxGen', 'var')
+    baselineMaxGen = 10;
+end
+if ~exist('baselineSeed', 'var')
+    baselineSeed = 1;
+end
 
 outputDir = make_output_dir(projectRoot);
 outputCsv = fullfile(outputDir, 'batch_random_order_cancellation.csv');
@@ -49,7 +60,7 @@ for datasetIdx = 1:numel(datasets)
         strategyPolicy = strategyPolicies{policyIdx};
         try
             datasetState = load_dataset_state(projectRoot, dataset, ...
-                baseline_mode);
+                baseline_mode, baselinePop, baselineMaxGen, baselineSeed);
         catch err
             rows = append_dataset_error_rows( ...
                 rows, dataset, seeds, cancelTimes, strategyPolicy, ...
@@ -80,7 +91,8 @@ fprintf('baseline_mode: %s\n', baseline_mode);
 fprintf('row_count: %d\n', numel(rows));
 fprintf('output_csv: %s\n', outputCsv);
 
-function datasetState = load_dataset_state(projectRoot, dataset, baseline_mode)
+function datasetState = load_dataset_state(projectRoot, dataset, baseline_mode, ...
+    baselinePop, baselineMaxGen, baselineSeed)
 datasetPath = fullfile(projectRoot, dataset);
 problem = read_fjsp(datasetPath);
 if strcmp(baseline_mode, 'sample')
@@ -93,6 +105,15 @@ elseif strcmp(baseline_mode, 'instance_decoded')
     machineData = baselineState.machineData;
     agvData = baselineState.agvData;
     baselineSchedule = baselineState.baselineSchedule;
+    decodeReport = baselineState.decodeReport;
+elseif strcmp(baseline_mode, 'static_solver')
+    machineData = build_sample_machine_data(problem.machineNum);
+    agvData = build_sample_agv_data();
+    solverConfig = build_static_solver_config( ...
+        baselinePop, baselineMaxGen, baselineSeed);
+    baselineState = build_static_baseline_schedule( ...
+        problem, machineData, agvData, solverConfig);
+    baselineSchedule = baselineState.schedule;
     decodeReport = baselineState.decodeReport;
 else
     error('random_order_cancellation_batch:InvalidBaselineMode', ...
@@ -192,6 +213,22 @@ baselineState.machineData = machineData;
 baselineState.agvData = agvData;
 baselineState.decodeReport = decodeReport;
 baselineState.baselineMode = 'instance_decoded';
+end
+
+function config = build_static_solver_config(baselinePop, baselineMaxGen, ...
+    baselineSeed)
+config = struct();
+config.algorithm = struct();
+config.algorithm.name = 'Static Solver NSGA-II';
+config.algorithm.p_cross = 0.8;
+config.algorithm.p_mutation = 0.2;
+config.algorithm.pop = baselinePop;
+config.algorithm.max_gen = baselineMaxGen;
+config.energy = struct();
+config.energy.AGVEG_MAX = 100;
+config.energy.eChargeSpeed = 20;
+config.random = struct();
+config.random.seed = baselineSeed;
 end
 
 function decodeConfig = build_baseline_decode_config(problem, agvData)
