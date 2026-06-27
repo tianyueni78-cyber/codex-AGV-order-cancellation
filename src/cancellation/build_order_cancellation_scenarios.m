@@ -42,7 +42,8 @@ for datasetIdx = 1:numel(datasets)
             for seedIdx = 1:numel(seeds)
                 seed = seeds(seedIdx);
                 [jobId, notes, isSkipped] = select_job_id( ...
-                    problem, baselineSchedule, jobCategory, seed);
+                    problem, baselineSchedule, jobCategory, seed, ...
+                    cancelTime);
                 if isSkipped
                     skipped(end + 1) = make_skipped_scenario( ...
                         dataset, timeWindow.name, jobCategory, seed, notes);
@@ -169,15 +170,21 @@ end
 end
 
 function [jobId, notes, isSkipped] = select_job_id( ...
-    problem, baselineSchedule, jobCategory, seed)
+    problem, baselineSchedule, jobCategory, seed, cancelTime)
 notes = {};
 isSkipped = false;
 jobId = [];
 
 switch jobCategory
     case 'random'
-        jobId = select_random_job(problem, seed);
-        notes{end + 1} = sprintf('random job selected with seed %d.', seed);
+        [jobId, isSkipped] = select_random_job( ...
+            problem, baselineSchedule, seed, cancelTime);
+        notes{end + 1} = sprintf( ...
+            'random cancellable job selected with seed %d.', seed);
+        if isSkipped
+            notes{end + 1} = ...
+                'random job skipped: no cancellable job at cancel_time.';
+        end
     case 'short'
         jobId = select_by_operation_count(problem, 'short');
         notes{end + 1} = 'short job selected by minimum operation count.';
@@ -201,10 +208,18 @@ if ~isSkipped
 end
 end
 
-function jobId = select_random_job(problem, seed)
+function [jobId, isSkipped] = select_random_job( ...
+    problem, baselineSchedule, seed, cancelTime)
+jobCompletionTimes = collect_job_completion_times(problem, baselineSchedule);
+validJobIds = find(jobCompletionTimes > cancelTime);
+isSkipped = isempty(validJobIds);
+if isSkipped
+    jobId = [];
+    return
+end
 previousRng = rng;
 rng(seed);
-jobId = randi(problem.jobNum);
+jobId = validJobIds(randi(numel(validJobIds)));
 rng(previousRng);
 end
 

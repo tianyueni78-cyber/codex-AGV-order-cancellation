@@ -31,6 +31,7 @@ assert_unique_scenario_ids(scenarios);
 assert_all_cancel_fields(scenarios, problem);
 assert_summary_counts(summary, config);
 assert_random_jobs_reproducible(scenarios, scenariosAgain);
+assert_random_jobs_are_cancellable(scenarios);
 assert_job_categories(scenarios);
 
 fprintf('test_order_cancellation_scenario_library passed\n');
@@ -164,6 +165,16 @@ for i = 1:numel(randomRows)
     assert(randomRows(i).cancel.job_id == ...
         randomRowsAgain(i).cancel.job_id, ...
         'Random job selection should be reproducible for the same seed.');
+end
+end
+
+function assert_random_jobs_are_cancellable(scenarios)
+randomRows = scenarios(strcmp({scenarios.job_category}, 'random'));
+completionTimes = [5, 9, 3];
+for i = 1:numel(randomRows)
+    jobId = randomRows(i).cancel.job_id;
+    assert(completionTimes(jobId) > randomRows(i).cancel.cancel_time, ...
+        'Random job should be selected from cancellable jobs only.');
 end
 end
 
