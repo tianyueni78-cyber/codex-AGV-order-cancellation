@@ -28,7 +28,7 @@ if ~isempty(candidate.report.rejectedReasons) || ...
 end
 
 agvTasksToRemove = select_removable_agv_tasks( ...
-    state.cancelled_unfinished_agv_tasks, cancel);
+    candidate.AGVTable, cancel);
 
 for i = 1:numel(agvTasksToRemove)
     agvTask = agvTasksToRemove(i);
@@ -36,6 +36,8 @@ for i = 1:numel(agvTasksToRemove)
     candidate.removed_agv_tasks(end + 1) = agvTask;
 end
 
+candidate.AGVTable = prune_job_from_agv_table( ...
+    candidate.AGVTable, cancel.job_id);
 candidate.report.removedAgvTaskCount = ...
     numel(candidate.removed_agv_tasks);
 candidate.isFeasible = true;
@@ -102,18 +104,56 @@ if state.cancel.cancel_time ~= cancel.cancel_time
 end
 end
 
-function agvTasksToRemove = select_removable_agv_tasks(agvTasks, cancel)
+function agvTasksToRemove = select_removable_agv_tasks(AGVTable, cancel)
 agvTasksToRemove = empty_agv_task_array();
 
-for i = 1:numel(agvTasks)
-    agvTask = agvTasks(i);
-    if agvTask.job_id == cancel.job_id && ...
-            strcmp(agvTask.status, 'unstarted')
+for agvIdx = 1:numel(AGVTable)
+    blocks = AGVTable{agvIdx};
+    if isempty(blocks)
+        continue
+    end
+
+    for blockIdx = 1:numel(blocks)
+        block = blocks(blockIdx);
+        if ~isfield(block, 'job') || block.job ~= cancel.job_id
+            continue
+        end
+
+        agvTask = struct();
+        agvTask.job_id = block.job;
+        agvTask.operation_id = block.opera;
+        agvTask.agv_id = agvIdx;
+        agvTask.block_index = blockIdx;
+        agvTask.start_time = block.start;
+        agvTask.end_time = block.end;
+        agvTask.from_machine = block.from_machine;
+        agvTask.to_machine = block.to_machine;
+        agvTask.status = '';
+        agvTask.load_status = [];
+        agvTask.charge = [];
         agvTasksToRemove(end + 1) = agvTask;
     end
 end
 
 agvTasksToRemove = sort_agv_tasks_for_deletion(agvTasksToRemove);
+end
+
+function AGVTable = prune_job_from_agv_table(AGVTable, jobId)
+for agvIdx = 1:numel(AGVTable)
+    blocks = AGVTable{agvIdx};
+    if isempty(blocks) || ~isstruct(blocks)
+        continue
+    end
+
+    keep = true(1, numel(blocks));
+    for blockIdx = 1:numel(blocks)
+        block = blocks(blockIdx);
+        if isfield(block, 'job') && block.job == jobId
+            keep(blockIdx) = false;
+        end
+    end
+    AGVTable{agvIdx} = blocks(keep);
+end
 end
 
 function agvTasks = sort_agv_tasks_for_deletion(agvTasks)

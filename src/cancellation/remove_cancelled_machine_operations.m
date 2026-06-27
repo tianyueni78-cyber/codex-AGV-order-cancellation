@@ -30,7 +30,7 @@ end
 candidate.machineTable = schedule.machineTable;
 candidate.AGVTable = schedule.AGVTable;
 operationsToRemove = select_removable_operations( ...
-    state.cancelled_unfinished_operations, cancel);
+    candidate.machineTable, cancel);
 
 for i = 1:numel(operationsToRemove)
     operation = operationsToRemove(i);
@@ -38,6 +38,8 @@ for i = 1:numel(operationsToRemove)
     candidate.removed_operations(end + 1) = operation;
 end
 
+candidate.machineTable = prune_job_from_machine_table( ...
+    candidate.machineTable, cancel.job_id);
 candidate.report.removedOperationCount = ...
     numel(candidate.removed_operations);
 candidate.isFeasible = true;
@@ -104,18 +106,52 @@ if state.cancel.cancel_time ~= cancel.cancel_time
 end
 end
 
-function operationsToRemove = select_removable_operations(operations, cancel)
+function operationsToRemove = select_removable_operations(machineTable, cancel)
 operationsToRemove = empty_operation_array();
 
-for i = 1:numel(operations)
-    operation = operations(i);
-    if operation.job_id == cancel.job_id && ...
-            strcmp(operation.status, 'unstarted')
+for machineIdx = 1:numel(machineTable)
+    blocks = machineTable{machineIdx};
+    if isempty(blocks)
+        continue
+    end
+
+    for blockIdx = 1:numel(blocks)
+        block = blocks(blockIdx);
+        if ~isfield(block, 'job') || block.job ~= cancel.job_id
+            continue
+        end
+
+        operation = struct();
+        operation.job_id = block.job;
+        operation.operation_id = block.opera;
+        operation.machine_id = machineIdx;
+        operation.block_index = blockIdx;
+        operation.start_time = block.start;
+        operation.end_time = block.end;
+        operation.status = '';
         operationsToRemove(end + 1) = operation;
     end
 end
 
 operationsToRemove = sort_operations_for_deletion(operationsToRemove);
+end
+
+function machineTable = prune_job_from_machine_table(machineTable, jobId)
+for machineIdx = 1:numel(machineTable)
+    blocks = machineTable{machineIdx};
+    if isempty(blocks) || ~isstruct(blocks)
+        continue
+    end
+
+    keep = true(1, numel(blocks));
+    for blockIdx = 1:numel(blocks)
+        block = blocks(blockIdx);
+        if isfield(block, 'job') && block.job == jobId
+            keep(blockIdx) = false;
+        end
+    end
+    machineTable{machineIdx} = blocks(keep);
+end
 end
 
 function operations = sort_operations_for_deletion(operations)

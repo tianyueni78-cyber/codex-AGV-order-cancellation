@@ -620,14 +620,14 @@ joinedReasons = lower(strjoin(reasons, ' | '));
 if contains(joinedReasons, 'candidate_infeasible')
     status = 'infeasible_candidate';
     errorText = summarize_validation_failure(candidate, evaluation, ...
-        candidateName);
+        cancel, candidateName);
     errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
         report, evaluation, candidateName);
 elseif contains(joinedReasons, 'evaluation_infeasible') || ...
         contains(joinedReasons, 'invalid_evaluation')
     status = 'rejected_by_validation';
     errorText = summarize_validation_failure(candidate, evaluation, ...
-        candidateName);
+        cancel, candidateName);
     errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
         report, evaluation, candidateName);
 elseif contains(joinedReasons, 'missing_y')
@@ -642,7 +642,7 @@ else
     if strcmp(errorText, 'unknown') && is_evaluation_infeasible(evaluation)
         status = 'rejected_by_validation';
         errorText = summarize_validation_failure(candidate, evaluation, ...
-            candidateName);
+            cancel, candidateName);
         errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
             report, evaluation, candidateName);
     elseif strcmp(errorText, 'unknown')
@@ -655,12 +655,20 @@ if strcmp(errorText, 'canceled order still scheduled')
     residualSummary = summarize_canceled_order_residual(candidate, cancel);
     if ~isempty(residualSummary)
         errorText = [errorText, ': ', residualSummary];
+    else
+        fallbackReason = summarize_validation_failure(candidate, ...
+            evaluation, cancel, candidateName);
+        if ~strcmp(fallbackReason, 'unknown validation failure')
+            errorText = fallbackReason;
+        else
+            errorText = 'validation failed without report';
+        end
     end
 end
 end
 
 function errorText = summarize_validation_failure(candidate, evaluation, ...
-    candidateName)
+    cancel, candidateName)
 errorText = 'unknown validation failure';
 
 if isempty_candidate(candidate)
@@ -684,6 +692,10 @@ end
 
 machineReason = classify_check_report(report, 'machineConflictCheck', ...
     'machine overlap', 'missing schedule');
+if strcmp(machineReason, 'canceled order still scheduled') && ...
+        isempty(summarize_canceled_order_residual(candidate, cancel))
+    machineReason = '';
+end
 if ~isempty(machineReason)
     errorText = machineReason;
     return
@@ -691,6 +703,10 @@ end
 
 agvReason = classify_check_report(report, 'agvConflictCheck', ...
     'agv overlap', 'missing schedule');
+if strcmp(agvReason, 'canceled order still scheduled') && ...
+        isempty(summarize_canceled_order_residual(candidate, cancel))
+    agvReason = '';
+end
 if ~isempty(agvReason)
     errorText = agvReason;
     return
@@ -705,6 +721,10 @@ end
 
 if isfield(report, 'errors') && iscell(report.errors) && ~isempty(report.errors)
     errorText = classify_message_list(report.errors, candidateName);
+    if strcmp(errorText, 'canceled order still scheduled') && ...
+            isempty(summarize_canceled_order_residual(candidate, cancel))
+        errorText = 'unknown validation failure';
+    end
     if ~strcmp(errorText, 'unknown validation failure')
         return
     end
@@ -713,6 +733,10 @@ end
 if isfield(report, 'rejectedReasons') && iscell(report.rejectedReasons) && ...
         ~isempty(report.rejectedReasons)
     errorText = classify_message_list(report.rejectedReasons, candidateName);
+    if strcmp(errorText, 'canceled order still scheduled') && ...
+            isempty(summarize_canceled_order_residual(candidate, cancel))
+        errorText = 'unknown validation failure';
+    end
     if ~strcmp(errorText, 'unknown validation failure')
         return
     end
@@ -724,6 +748,10 @@ if isstruct(evaluation) && isfield(evaluation, 'report') && ...
             iscell(evaluation.report.errors) && ...
             ~isempty(evaluation.report.errors)
         errorText = classify_evaluation_messages(evaluation.report.errors);
+        if strcmp(errorText, 'canceled order still scheduled') && ...
+                isempty(summarize_canceled_order_residual(candidate, cancel))
+            errorText = 'unknown validation failure';
+        end
         return
     end
     if isfield(evaluation.report, 'rejectedReasons') && ...
@@ -731,6 +759,10 @@ if isstruct(evaluation) && isfield(evaluation, 'report') && ...
             ~isempty(evaluation.report.rejectedReasons)
         errorText = classify_evaluation_messages( ...
             evaluation.report.rejectedReasons);
+        if strcmp(errorText, 'canceled order still scheduled') && ...
+                isempty(summarize_canceled_order_residual(candidate, cancel))
+            errorText = 'unknown validation failure';
+        end
         return
     end
 end
@@ -1510,7 +1542,6 @@ end
     candidate, 'AGVTable', cancel.job_id, 'agv');
 
 if machineCount == 0 && agvCount == 0
-    summary = 'residual source unknown';
     return
 end
 

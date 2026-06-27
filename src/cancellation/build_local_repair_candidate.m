@@ -11,6 +11,8 @@ end
 
 candidate = remove_cancelled_machine_operations( ...
     problem, schedule, state, cancel);
+[candidate.machineTable, candidate.AGVTable] = prune_cancelled_job_records( ...
+    candidate.machineTable, candidate.AGVTable, cancel.job_id);
 [machineIsFeasible, machineReport] = ...
     check_machine_table_feasibility(candidate.machineTable);
 candidate.report.machineConflictCheck = machineReport;
@@ -28,6 +30,8 @@ agvCandidate = remove_cancelled_agv_tasks( ...
 if ~agvCandidate.isFeasible
     candidate.report.agvConflictCheck = agvCandidate.report;
     candidate = merge_agv_candidate(candidate, agvCandidate);
+    [candidate.machineTable, candidate.AGVTable] = prune_cancelled_job_records( ...
+        candidate.machineTable, candidate.AGVTable, cancel.job_id);
     candidate = mark_final_feasibility(candidate);
     return
 end
@@ -37,6 +41,8 @@ candidate.removed_agv_tasks = agvCandidate.removed_agv_tasks;
 candidate.report.removedAgvTaskCount = ...
     agvCandidate.report.removedAgvTaskCount;
 candidate.report = append_check_errors(candidate.report, machineReport);
+[candidate.machineTable, candidate.AGVTable] = prune_cancelled_job_records( ...
+    candidate.machineTable, candidate.AGVTable, cancel.job_id);
 
 [agvIsFeasible, agvReport] = ...
     check_agv_table_feasibility(candidate.AGVTable);
@@ -51,6 +57,34 @@ candidate.report = append_check_errors(candidate.report, sequenceReport);
 candidate.isFeasible = machineIsFeasible && agvIsFeasible && ...
     sequenceIsFeasible && isempty(candidate.report.errors) && ...
     isempty(candidate.report.rejectedReasons);
+end
+
+function [machineTable, AGVTable] = prune_cancelled_job_records( ...
+    machineTable, AGVTable, jobId)
+machineTable = prune_job_from_table(machineTable, jobId, 'job');
+AGVTable = prune_job_from_table(AGVTable, jobId, 'job');
+end
+
+function tableValue = prune_job_from_table(tableValue, jobId, fieldName)
+if ~iscell(tableValue)
+    return
+end
+
+for outerIdx = 1:numel(tableValue)
+    blocks = tableValue{outerIdx};
+    if isempty(blocks) || ~isstruct(blocks)
+        continue
+    end
+
+    keep = true(1, numel(blocks));
+    for blockIdx = 1:numel(blocks)
+        block = blocks(blockIdx);
+        if isfield(block, fieldName) && block.(fieldName) == jobId
+            keep(blockIdx) = false;
+        end
+    end
+    tableValue{outerIdx} = blocks(keep);
+end
 end
 
 function candidate = merge_agv_candidate(candidate, agvCandidate)
