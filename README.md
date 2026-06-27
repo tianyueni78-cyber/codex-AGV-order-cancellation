@@ -227,6 +227,10 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 J：订单变更统一框架](docs/00_system_overview/stage_j_order_change_framework_plan.md) | 统一事件结构、取消映射、插单预留、任务集合变化语义、K/L 后续入口 |
 | [阶段 K：自适应策略选择](docs/00_system_overview/stage_k_adaptive_strategy_plan.md) | 规则式自适应权重、特征定义、测试入口、smoke 输出、局限和阶段 L 入口 |
 | [阶段 L：大规模与统计验证](docs/00_system_overview/stage_l_benchmark_plan.md) | 多实例、多场景、多随机种子的稳定性验证范围、统计指标和验收边界 |
+| [阶段 M：多扰动接口边界](docs/00_system_overview/stage_m_multi_disruption_interface_plan.md) | 区分订单取消、机器故障、AGV 故障三类扰动；明确本项目当前只实现订单取消，不实现机器故障、AGV 故障、新订单插入或强化学习。           |
+| [阶段 N：随机订单取消复现包](docs/repro/order_cancellation_repro_guide.md)                     | 随机订单取消 demo、批量实验入口、参数设置、CSV 输出字段、运行方式和复现边界。                                |
+| [阶段 O：策略基线对比结果说明](docs/repro/order_cancellation_strategy_baseline_results.md)      | 记录 `auto_selection`、`local_only`、`complete_only` 三种策略基线的中规模实验结果、统计摘要和结论边界。 |
+
 | [阶段 G-N 后续路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 从第一版闭环走向更灵活订单取消调度的后续阶段 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 仓库目录和关键文件用途说明 |
 
@@ -257,5 +261,9 @@ outputs/        生成的输出和日志，不提交 Git
 阶段 F 完成小规模实验入口、汇总和项目报告。
 阶段 G 完成场景库生成、场景库实验入口、结果汇总和工作记录。
 阶段 G 已基于 outputs/order_cancellation_scenario_library/20260621_150617/ 形成项目报告。
-下一步建议：进入阶段 H：混合修复策略，重点研究什么时候只做局部修复、什么时候触发完全重调度。
+阶段 M 完成多扰动接口边界说明，明确订单取消与机器故障、AGV 故障的建模边界。
+阶段 N 完成随机订单取消复现包，包含单次 demo、批量实验、CSV 追溯和复现文档。
+阶段 O 完成三策略基线对比入口，支持 auto_selection、local_only、complete_only，并完成 270 行中规模实验、统计脚本和结果说明文档。
+当前结论仅支持订单取消代码原型与 Mk01.fjs 上的阶段性实验结果，不支持全局最优、多数据集泛化或论文级最终结论。
 ```
+
