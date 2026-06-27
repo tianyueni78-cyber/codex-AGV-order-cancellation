@@ -941,6 +941,7 @@ function reason = classify_check_report(report, fieldName, overlapText, ...
     missingText)
 reason = '';
 if ~isfield(report, fieldName) || ~isstruct(report.(fieldName))
+    reason = [fieldName, ': validator returned false without report'];
     return
 end
 checkReport = report.(fieldName);
@@ -954,7 +955,7 @@ if isfield(checkReport, 'errors') && iscell(checkReport.errors) && ...
         reason = overlapText;
     end
 else
-    reason = 'validation report empty';
+    reason = [fieldName, ': validator returned false without report'];
 end
 
 if strcmp(reason, 'missing schedule')
@@ -1171,6 +1172,8 @@ if isstruct(candidate)
     parts{end + 1} = ['candidate_fields=', summarize_field_names(candidate)];
     if isfield(candidate, 'report') && isstruct(candidate.report)
         parts{end + 1} = ['report_fields=', summarize_field_names(candidate.report)];
+        parts{end + 1} = ['report_check_statuses=', ...
+            summarize_report_check_statuses(candidate.report)];
     else
         parts{end + 1} = 'no candidate report';
     end
@@ -1199,6 +1202,44 @@ if ~isstruct(s)
     return
 end
 text = join_preview_names(fieldnames(s), 5);
+end
+
+function text = summarize_report_check_statuses(report)
+text = 'n/a';
+if ~isstruct(report)
+    return
+end
+
+parts = {};
+parts{end + 1} = ['machine=', summarize_single_check_status(report, ...
+    'machineConflictCheck')];
+parts{end + 1} = ['agv=', summarize_single_check_status(report, ...
+    'agvConflictCheck')];
+parts{end + 1} = ['job=', summarize_single_check_status(report, ...
+    'jobSequenceCheck')];
+text = strjoin(parts, '|');
+end
+
+function text = summarize_single_check_status(report, fieldName)
+text = 'missing';
+if ~isfield(report, fieldName) || ~isstruct(report.(fieldName))
+    return
+end
+
+checkReport = report.(fieldName);
+if isfield(checkReport, 'isFeasible') && ~isempty(checkReport.isFeasible)
+    if logical(checkReport.isFeasible)
+        text = 'true';
+    else
+        text = 'false';
+    end
+end
+
+errorCount = 0;
+if isfield(checkReport, 'errors') && iscell(checkReport.errors)
+    errorCount = numel(checkReport.errors);
+end
+text = [text, '/', num2str(errorCount)];
 end
 
 function text = summarize_value_fields(s, fieldNames)
