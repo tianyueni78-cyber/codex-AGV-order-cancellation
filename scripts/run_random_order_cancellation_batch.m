@@ -366,6 +366,7 @@ cleanup = onCleanup(@() fclose(fid));
 fprintf(fid, ['dataset,seed,cancel_time,canceled_order_id,', ...
     'strategy_policy,selected_strategy,run_through,feasible,', ...
     'Cmax_delta,SD,TD,Y,local_repair_status,local_repair_error,', ...
+    'local_repair_validation_probe,', ...
     'complete_rescheduling_status,complete_rescheduling_error,', ...
     'canceled_order_state_at_cancel_time,', ...
     'canceled_order_started_op_count,', ...
@@ -376,13 +377,14 @@ fprintf(fid, ['dataset,seed,cancel_time,canceled_order_id,', ...
 for i = 1:numel(rows)
     row = rows(i);
     fprintf(fid, ['%s,%d,%.6f,%g,%s,%s,%d,%d,%.6f,%.6f,%.6f,%.6f,', ...
-        '%s,%s,%s,%s,%s,%d,%d,%d,%d,%d,%s,%s\n'], ...
+        '%s,%s,%s,%s,%s,%s,%d,%d,%d,%d,%d,%s,%s\n'], ...
         csv_text(row.dataset), row.seed, row.cancel_time, ...
         row.canceled_order_id, csv_text(row.strategy_policy), ...
         csv_text(row.selected_strategy), ...
         row.run_through, row.feasible, row.Cmax_delta, row.SD, row.TD, ...
         row.Y, csv_text(row.local_repair_status), ...
         csv_text(row.local_repair_error), ...
+        csv_text(row.local_repair_validation_probe), ...
         csv_text(row.complete_rescheduling_status), ...
         csv_text(row.complete_rescheduling_error), ...
         csv_text(row.canceled_order_state_at_cancel_time), ...
@@ -416,6 +418,7 @@ row.TD = NaN;
 row.Y = NaN;
 row.local_repair_status = 'not_called';
 row.local_repair_error = 'unknown';
+row.local_repair_validation_probe = '';
 row.complete_rescheduling_status = 'not_called';
 row.complete_rescheduling_error = 'unknown';
 row.canceled_order_state_at_cancel_time = 'unknown';
@@ -477,6 +480,8 @@ end
     summarize_candidate_diagnostics(localCandidate, localEvaluation, ...
     get_selection_candidate_status(selection, 'localRepair'), ...
     state, cancel, 'local_repair');
+[row.local_repair_validation_probe] = build_validation_probe( ...
+    localCandidate, localEvaluation, selection, 'local_repair');
 [row.complete_rescheduling_status, row.complete_rescheduling_error] = ...
     summarize_candidate_diagnostics(completeCandidate, ...
     completeEvaluation, ...
@@ -519,7 +524,8 @@ end
 
 if is_selection_status_infeasible(selectionStatus)
     [status, errorText] = summarize_selection_rejection( ...
-        selectionStatus, report, evaluation, state, cancel, candidateName);
+        candidate, selectionStatus, report, evaluation, state, cancel, ...
+        candidateName);
     return
 end
 
@@ -587,7 +593,8 @@ tf = ~isstruct(evaluation) || ~isfield(evaluation, 'metrics') || ...
 end
 
 function [status, errorText] = summarize_selection_rejection( ...
-    selectionStatus, report, evaluation, state, cancel, candidateName)
+    candidate, selectionStatus, report, evaluation, state, cancel, ...
+    candidateName)
 status = 'unknown';
 errorText = 'unknown';
 
@@ -604,11 +611,17 @@ joinedReasons = lower(strjoin(reasons, ' | '));
 
 if contains(joinedReasons, 'candidate_infeasible')
     status = 'infeasible_candidate';
-    errorText = 'infeasible candidate';
+    errorText = summarize_validation_failure(candidate, evaluation, ...
+        candidateName);
+    errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
+        report, evaluation, candidateName);
 elseif contains(joinedReasons, 'evaluation_infeasible') || ...
         contains(joinedReasons, 'invalid_evaluation')
     status = 'rejected_by_validation';
-    errorText = 'validation failed';
+    errorText = summarize_validation_failure(candidate, evaluation, ...
+        candidateName);
+    errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
+        report, evaluation, candidateName);
 elseif contains(joinedReasons, 'missing_y')
     status = 'rejected_by_validation';
     errorText = 'missing objective';
@@ -620,8 +633,564 @@ else
         selectionStatus, candidateName);
     if strcmp(errorText, 'unknown') && is_evaluation_infeasible(evaluation)
         status = 'rejected_by_validation';
-        errorText = 'validation failed';
+        errorText = summarize_validation_failure(candidate, evaluation, ...
+            candidateName);
+        errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
+            report, evaluation, candidateName);
+    elseif strcmp(errorText, 'unknown')
+        errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
+            report, evaluation, candidateName);
     end
+end
+end
+
+function errorText = summarize_validation_failure(candidate, evaluation, ...
+    candidateName)
+errorText = 'unknown validation failure';
+
+if isempty_candidate(candidate)
+    errorText = 'empty candidate';
+    return
+end
+
+if ~isstruct(candidate)
+    return
+end
+
+if ~isfield(candidate, 'machineTable') || ~isfield(candidate, 'AGVTable')
+    errorText = 'missing schedule';
+    return
+end
+
+report = struct();
+if isfield(candidate, 'report') && isstruct(candidate.report)
+    report = candidate.report;
+end
+
+machineReason = classify_check_report(report, 'machineConflictCheck', ...
+    'machine overlap', 'missing schedule');
+if ~isempty(machineReason)
+    errorText = machineReason;
+    return
+end
+
+agvReason = classify_check_report(report, 'agvConflictCheck', ...
+    'agv overlap', 'missing schedule');
+if ~isempty(agvReason)
+    errorText = agvReason;
+    return
+end
+
+sequenceReason = classify_check_report(report, 'jobSequenceCheck', ...
+    'precedence violation', 'missing schedule');
+if ~isempty(sequenceReason)
+    errorText = sequenceReason;
+    return
+end
+
+if isfield(report, 'errors') && iscell(report.errors) && ~isempty(report.errors)
+    errorText = classify_message_list(report.errors, candidateName);
+    if ~strcmp(errorText, 'unknown validation failure')
+        return
+    end
+end
+
+if isfield(report, 'rejectedReasons') && iscell(report.rejectedReasons) && ...
+        ~isempty(report.rejectedReasons)
+    errorText = classify_message_list(report.rejectedReasons, candidateName);
+    if ~strcmp(errorText, 'unknown validation failure')
+        return
+    end
+end
+
+if isstruct(evaluation) && isfield(evaluation, 'report') && ...
+        isstruct(evaluation.report)
+    if isfield(evaluation.report, 'errors') && ...
+            iscell(evaluation.report.errors) && ...
+            ~isempty(evaluation.report.errors)
+        errorText = classify_evaluation_messages(evaluation.report.errors);
+        return
+    end
+    if isfield(evaluation.report, 'rejectedReasons') && ...
+            iscell(evaluation.report.rejectedReasons) && ...
+            ~isempty(evaluation.report.rejectedReasons)
+        errorText = classify_evaluation_messages( ...
+            evaluation.report.rejectedReasons);
+        return
+    end
+end
+
+if isfield(candidate, 'isFeasible') && ~logical(candidate.isFeasible)
+    errorText = 'candidate not added to feasible pool';
+end
+
+[rawMessage, hasValidationInfo] = extract_first_validation_message( ...
+    candidate, evaluation);
+if ~isempty(rawMessage)
+    errorText = ['raw: ', rawMessage];
+    return
+end
+
+if ~hasValidationInfo
+    errorText = 'validation failed without report';
+end
+end
+
+function errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
+    report, evaluation, candidateName)
+if ~strcmp(errorText, 'unknown validation failure')
+    return
+end
+
+rawReason = extract_first_validation_reason(selectionStatus, report, ...
+    evaluation);
+if isempty(rawReason)
+    errorText = 'validation failed without report';
+    return
+end
+
+mappedReason = classify_message_list({rawReason}, candidateName);
+if strcmp(mappedReason, 'unknown validation failure')
+    mappedReason = classify_message_list({rawReason}, 'local_repair');
+end
+if strcmp(mappedReason, 'unknown validation failure')
+    mappedReason = classify_evaluation_messages({rawReason});
+end
+
+if strcmp(mappedReason, 'unknown validation failure')
+    errorText = ['raw: ', rawReason];
+else
+    errorText = mappedReason;
+end
+end
+
+function reason = extract_first_validation_reason(selectionStatus, report, ...
+    evaluation)
+reason = '';
+sources = {};
+
+if isstruct(selectionStatus) && isfield(selectionStatus, 'rejectedReasons')
+    sources{end + 1} = selectionStatus.rejectedReasons;
+end
+if isstruct(report)
+    if isfield(report, 'rejectedReasons')
+        sources{end + 1} = report.rejectedReasons;
+    end
+    if isfield(report, 'errors')
+        sources{end + 1} = report.errors;
+    end
+end
+if isstruct(evaluation) && isfield(evaluation, 'report') && ...
+        isstruct(evaluation.report)
+    if isfield(evaluation.report, 'rejectedReasons')
+        sources{end + 1} = evaluation.report.rejectedReasons;
+    end
+    if isfield(evaluation.report, 'errors')
+        sources{end + 1} = evaluation.report.errors;
+    end
+end
+
+for i = 1:numel(sources)
+    reason = first_meaningful_text(sources{i});
+    if ~isempty(reason)
+        return
+    end
+end
+end
+
+function reason = first_meaningful_text(value)
+reason = '';
+if iscell(value)
+    for i = 1:numel(value)
+        reason = first_meaningful_text(value{i});
+        if ~isempty(reason)
+            return
+        end
+    end
+    return
+end
+
+if isstruct(value)
+    priorityFields = {'reason', 'message', 'type', 'id', 'errors', ...
+        'rejectedReasons', 'report'};
+    for i = 1:numel(priorityFields)
+        fieldName = priorityFields{i};
+        if isfield(value, fieldName)
+            reason = first_meaningful_text(value.(fieldName));
+            if ~isempty(reason)
+                return
+            end
+        end
+    end
+    return
+end
+
+if isstring(value)
+    if isscalar(value)
+        reason = first_meaningful_text(char(value));
+    elseif ~isempty(value)
+        reason = first_meaningful_text(char(value(1)));
+    end
+    return
+end
+
+if ischar(value)
+    text = shorten_validation_text(value);
+    if isempty(text)
+        return
+    end
+    genericReasons = {'invalid_candidate', 'invalid_evaluation', ...
+        'candidate_infeasible', 'evaluation_infeasible', 'missing_y', ...
+        'unknown validation failure'};
+    if any(strcmpi(strtrim(lower(text)), genericReasons))
+        return
+    end
+    reason = text;
+    return
+end
+
+if isnumeric(value) || islogical(value)
+    if isscalar(value) && isfinite(value)
+        reason = shorten_validation_text(num2str(value));
+    end
+end
+end
+
+function reason = classify_check_report(report, fieldName, overlapText, ...
+    missingText)
+reason = '';
+if ~isfield(report, fieldName) || ~isstruct(report.(fieldName))
+    return
+end
+checkReport = report.(fieldName);
+if isfield(checkReport, 'isFeasible') && logical(checkReport.isFeasible)
+    return
+end
+if isfield(checkReport, 'errors') && iscell(checkReport.errors) && ...
+        ~isempty(checkReport.errors)
+    reason = classify_message_list(checkReport.errors, fieldName);
+    if strcmp(reason, 'unknown validation failure')
+        reason = overlapText;
+    end
+else
+    reason = 'validation report empty';
+end
+
+if strcmp(reason, 'missing schedule')
+    return
+end
+
+if strcmp(reason, 'unknown validation failure') && ...
+        contains(lower(fieldName), 'jobsequence')
+    reason = 'precedence violation';
+elseif strcmp(reason, 'unknown validation failure')
+    reason = overlapText;
+end
+end
+
+function reason = classify_message_list(messages, candidateName)
+joinedMessages = lower(strjoin(messages, ' | '));
+if contains(joinedMessages, 'must be a cell array') || ...
+        contains(joinedMessages, 'require field') || ...
+        contains(joinedMessages, 'required.')
+    reason = 'missing schedule';
+elseif contains(joinedMessages, 'processing machine operations') || ...
+        contains(joinedMessages, 'processing agv tasks') || ...
+        contains(joinedMessages, 'already started')
+    reason = 'canceled order still scheduled';
+elseif contains(joinedMessages, 'contains unfinished tasks from already cancelled jobs') || ...
+        contains(joinedMessages, 'backflow')
+    reason = 'frozen operation modified';
+elseif contains(joinedMessages, 'overlapping operations')
+    reason = 'machine overlap';
+elseif contains(joinedMessages, 'overlapping transport tasks')
+    reason = 'agv overlap';
+elseif contains(joinedMessages, 'starts before operation completes') || ...
+        contains(joinedMessages, 'not strictly increasing') || ...
+        contains(joinedMessages, 'completes before') || ...
+        contains(joinedMessages, 'beyond problem.operaNumVec')
+    reason = 'precedence violation';
+elseif contains(joinedMessages, 'candidate.isfeasible must be true before evaluation')
+    reason = 'candidate not added to feasible pool';
+elseif contains(joinedMessages, 'missing') && contains(joinedMessages, 'schedule')
+    reason = 'missing schedule';
+elseif contains(joinedMessages, 'objective') || contains(joinedMessages, 'y_evaluation_failed') || ...
+        contains(joinedMessages, 'config.weights') || ...
+        contains(joinedMessages, 'config.normalization')
+    reason = 'missing objective';
+elseif contains(joinedMessages, 'candidate not added') || ...
+        contains(joinedMessages, 'feasible pool')
+    reason = 'candidate not added to feasible pool';
+elseif contains(joinedMessages, 'empty')
+    reason = 'validation report empty';
+else
+    if strcmp(candidateName, 'local_repair')
+        reason = 'unknown validation failure';
+    else
+        reason = 'unknown validation failure';
+    end
+end
+end
+
+function reason = classify_evaluation_messages(messages)
+reason = classify_message_list(messages, 'local_repair');
+if strcmp(reason, 'unknown validation failure')
+    joinedMessages = lower(strjoin(messages, ' | '));
+    if contains(joinedMessages, 'candidate.isfeasible must be true before evaluation')
+        reason = 'candidate not added to feasible pool';
+    elseif contains(joinedMessages, 'contains unfinished tasks from already cancelled jobs') || ...
+            contains(joinedMessages, 'backflow')
+        reason = 'frozen operation modified';
+    elseif contains(joinedMessages, 'processing machine operations') || ...
+            contains(joinedMessages, 'processing agv tasks')
+        reason = 'canceled order still scheduled';
+    elseif contains(joinedMessages, 'validation report empty')
+        reason = 'validation report empty';
+    elseif contains(joinedMessages, 'missing schedule')
+        reason = 'missing schedule';
+    elseif contains(joinedMessages, 'objective') || ...
+            contains(joinedMessages, 'config.weights') || ...
+            contains(joinedMessages, 'config.normalization')
+        reason = 'missing objective';
+    end
+end
+if strcmp(reason, 'unknown validation failure')
+    joinedMessages = lower(strjoin(messages, ' | '));
+    if contains(joinedMessages, 'config.weights') || ...
+            contains(joinedMessages, 'config.normalization') || ...
+            contains(joinedMessages, 'objective')
+        reason = 'missing objective';
+    end
+end
+end
+
+function [rawMessage, hasValidationInfo] = extract_first_validation_message( ...
+    candidate, evaluation)
+rawMessage = '';
+hasValidationInfo = false;
+
+sources = {};
+if isstruct(candidate) && isfield(candidate, 'report') && ...
+        isstruct(candidate.report)
+    sources{end + 1} = candidate.report;
+end
+if isstruct(evaluation) && isfield(evaluation, 'report') && ...
+        isstruct(evaluation.report)
+    sources{end + 1} = evaluation.report;
+end
+
+for i = 1:numel(sources)
+    [rawMessage, sourceHasInfo] = extract_first_text_from_value(sources{i});
+    hasValidationInfo = hasValidationInfo || sourceHasInfo;
+    if ~isempty(rawMessage)
+        return
+    end
+end
+end
+
+function [text, hasInfo] = extract_first_text_from_value(value)
+text = '';
+hasInfo = false;
+
+if ischar(value)
+    text = shorten_validation_text(value);
+    hasInfo = ~isempty(strtrim(text));
+    return
+end
+
+if isstring(value)
+    if isscalar(value)
+        text = shorten_validation_text(char(value));
+        hasInfo = ~isempty(strtrim(text));
+    elseif ~isempty(value)
+        [text, hasInfo] = extract_first_text_from_value(value(1));
+    end
+    return
+end
+
+if iscell(value)
+    for i = 1:numel(value)
+        [text, hasInfo] = extract_first_text_from_value(value{i});
+        if ~isempty(text) || hasInfo
+            return
+        end
+    end
+    return
+end
+
+if isstruct(value)
+    fieldPriority = {'message', 'reason', 'type', 'id', 'error', ...
+        'errors', 'rejectedReason', 'rejectedReasons', 'report'};
+    for i = 1:numel(fieldPriority)
+        fieldName = fieldPriority{i};
+        if isfield(value, fieldName)
+            [text, hasInfo] = extract_first_text_from_value(value.(fieldName));
+            if ~isempty(text) || hasInfo
+                return
+            end
+        end
+    end
+
+    fieldNames = fieldnames(value);
+    for i = 1:numel(fieldNames)
+        fieldName = fieldNames{i};
+        if any(strcmp(fieldName, fieldPriority))
+            continue
+        end
+        [text, hasInfo] = extract_first_text_from_value(value.(fieldName));
+        if ~isempty(text) || hasInfo
+            return
+        end
+    end
+    return
+end
+
+if isnumeric(value) || islogical(value)
+    if isscalar(value) && isfinite(value)
+        text = shorten_validation_text(num2str(value));
+        hasInfo = true;
+    end
+end
+end
+
+function text = shorten_validation_text(text)
+text = strtrim(regexprep(char(string(text)), '[\r\n]+', ' '));
+if numel(text) > 120
+    text = [text(1:117), '...'];
+end
+end
+
+function probe = build_validation_probe(candidate, evaluation, selection, ...
+    candidateName)
+probe = '';
+parts = {};
+selectionFieldName = candidate_selection_field_name(candidateName);
+
+parts{end + 1} = ['selection_fields=', summarize_field_names(selection)];
+
+if isstruct(selection) && isfield(selection, 'candidates') && ...
+        isstruct(selection.candidates)
+    parts{end + 1} = ['candidates_fields=', ...
+        summarize_field_names(selection.candidates)];
+    if isfield(selection.candidates, selectionFieldName)
+        status = selection.candidates.(selectionFieldName);
+        parts{end + 1} = ['status_fields=', summarize_field_names(status)];
+        parts{end + 1} = ['reason_fields=', summarize_value_fields(status, ...
+            {'reason', 'message', 'type', 'id', 'status', ...
+            'rejectedReasons', 'errors'})];
+    else
+        parts{end + 1} = ['no ', selectionFieldName, ...
+            ' candidate in selection'];
+    end
+else
+    parts{end + 1} = 'no selection candidates';
+end
+
+if isstruct(candidate)
+    parts{end + 1} = ['candidate_fields=', summarize_field_names(candidate)];
+    if isfield(candidate, 'report') && isstruct(candidate.report)
+        parts{end + 1} = ['report_fields=', summarize_field_names(candidate.report)];
+    else
+        parts{end + 1} = 'no candidate report';
+    end
+else
+    parts{end + 1} = 'no candidate';
+end
+
+if isstruct(evaluation)
+    parts{end + 1} = ['evaluation_fields=', summarize_field_names(evaluation)];
+    if isfield(evaluation, 'report') && isstruct(evaluation.report)
+        parts{end + 1} = ['evaluation_report_fields=', ...
+            summarize_field_names(evaluation.report)];
+    else
+        parts{end + 1} = 'no evaluation report';
+    end
+else
+    parts{end + 1} = 'no evaluation';
+end
+
+probe = truncate_probe_text(strjoin(parts, '; '));
+end
+
+function text = summarize_field_names(s)
+if ~isstruct(s)
+    text = 'n/a';
+    return
+end
+text = join_preview_names(fieldnames(s), 5);
+end
+
+function text = summarize_value_fields(s, fieldNames)
+text = 'n/a';
+if ~isstruct(s)
+    return
+end
+
+parts = {};
+for i = 1:numel(fieldNames)
+    fieldName = fieldNames{i};
+    if ~isfield(s, fieldName)
+        continue
+    end
+    valueText = summarize_short_value(s.(fieldName));
+    if ~isempty(valueText)
+        parts{end + 1} = [fieldName, '=', valueText];
+    end
+end
+
+if ~isempty(parts)
+    text = strjoin(parts, ',');
+end
+end
+
+function text = summarize_short_value(value)
+text = '';
+if ischar(value)
+    text = shorten_validation_text(value);
+elseif isstring(value)
+    if isscalar(value)
+        text = shorten_validation_text(char(value));
+    elseif ~isempty(value)
+        text = shorten_validation_text(char(value(1)));
+    end
+elseif isnumeric(value) || islogical(value)
+    if isscalar(value) && isfinite(value)
+        text = shorten_validation_text(num2str(value));
+    end
+elseif iscell(value) && ~isempty(value)
+    text = summarize_short_value(value{1});
+elseif isstruct(value)
+    text = summarize_field_names(value);
+end
+end
+
+function text = join_preview_names(names, maxCount)
+if isempty(names)
+    text = 'none';
+    return
+end
+
+count = min(numel(names), maxCount);
+text = strjoin(names(1:count), '|');
+if numel(names) > maxCount
+    text = [text, '|...'];
+end
+end
+
+function text = truncate_probe_text(text)
+text = strtrim(regexprep(char(string(text)), '[\r\n]+', ' '));
+if numel(text) > 200
+    text = [text(1:197), '...'];
+end
+end
+
+function fieldName = candidate_selection_field_name(candidateName)
+if strcmp(candidateName, 'local_repair')
+    fieldName = 'localRepair';
+elseif strcmp(candidateName, 'complete_rescheduling')
+    fieldName = 'completeRescheduling';
+else
+    fieldName = candidateName;
 end
 end
 
