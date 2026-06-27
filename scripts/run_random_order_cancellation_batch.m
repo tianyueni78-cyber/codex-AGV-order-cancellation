@@ -546,6 +546,13 @@ if is_nonempty_cell_field(report, 'rejectedReasons')
     status = 'infeasible_candidate';
     errorText = summarize_rejection_reason(report, state, cancel, ...
         selectionStatus, candidateName);
+    if strcmp(errorText, 'canceled order still scheduled')
+        residualSummary = summarize_canceled_order_residual(candidate, ...
+            cancel);
+        if ~isempty(residualSummary)
+            errorText = [errorText, ': ', residualSummary];
+        end
+    end
     return
 end
 
@@ -554,6 +561,7 @@ if is_evaluation_infeasible(evaluation)
     errorText = 'validation failed';
     return
 end
+
 end
 
 function status = get_selection_candidate_status(selection, fieldName)
@@ -640,6 +648,13 @@ else
     elseif strcmp(errorText, 'unknown')
         errorText = resolve_raw_validation_error(errorText, selectionStatus, ...
             report, evaluation, candidateName);
+    end
+end
+
+if strcmp(errorText, 'canceled order still scheduled')
+    residualSummary = summarize_canceled_order_residual(candidate, cancel);
+    if ~isempty(residualSummary)
+        errorText = [errorText, ': ', residualSummary];
     end
 end
 end
@@ -1481,6 +1496,96 @@ parts = {
     ['state=', row.canceled_order_state_at_cancel_time]
 };
 note = strjoin(parts, '; ');
+end
+
+function summary = summarize_canceled_order_residual(candidate, cancel)
+summary = '';
+if ~isstruct(candidate) || ~isstruct(cancel) || ~isfield(cancel, 'job_id')
+    return
+end
+
+[machineCount, machinePreview] = summarize_job_residual_in_table( ...
+    candidate, 'machineTable', cancel.job_id, 'machine');
+[agvCount, agvPreview] = summarize_job_residual_in_table( ...
+    candidate, 'AGVTable', cancel.job_id, 'agv');
+
+if machineCount == 0 && agvCount == 0
+    summary = 'residual source unknown';
+    return
+end
+
+parts = {};
+parts{end + 1} = ['machine_count=', num2str(machineCount)];
+parts{end + 1} = ['agv_count=', num2str(agvCount)];
+if ~isempty(machinePreview)
+    parts{end + 1} = ['machine_first=', machinePreview];
+end
+if ~isempty(agvPreview)
+    parts{end + 1} = ['agv_first=', agvPreview];
+end
+summary = strjoin(parts, ', ');
+end
+
+function [count, preview] = summarize_job_residual_in_table( ...
+    candidate, fieldName, jobId, resourceLabel)
+count = 0;
+preview = '';
+if ~isfield(candidate, fieldName) || ~iscell(candidate.(fieldName))
+    return
+end
+
+tableValue = candidate.(fieldName);
+for outerIdx = 1:numel(tableValue)
+    rows = tableValue{outerIdx};
+    if isempty(rows) || ~isstruct(rows)
+        continue
+    end
+    for rowIdx = 1:numel(rows)
+        row = rows(rowIdx);
+        if ~isfield(row, 'job') || row.job ~= jobId
+            continue
+        end
+        count = count + 1;
+        if isempty(preview)
+            preview = summarize_residual_row(row, resourceLabel, outerIdx, ...
+                rowIdx);
+        end
+    end
+end
+end
+
+function text = summarize_residual_row(row, resourceLabel, outerIdx, rowIdx)
+parts = {
+    [resourceLabel, '=', num2str(outerIdx)]
+    ['idx=', num2str(rowIdx)]
+};
+if isfield(row, 'opera') && ~isempty(row.opera)
+    parts{end + 1} = ['op=', num2str(row.opera)];
+end
+if isfield(row, 'job') && ~isempty(row.job)
+    parts{end + 1} = ['job=', num2str(row.job)];
+end
+if isfield(row, 'status') && ~isempty(row.status)
+    parts{end + 1} = ['status=', short_text(row.status)];
+end
+if isfield(row, 'load_status') && ~isempty(row.load_status)
+    parts{end + 1} = ['load_status=', short_text(row.load_status)];
+end
+if isfield(row, 'from_machine') && ~isempty(row.from_machine)
+    parts{end + 1} = ['from=', num2str(row.from_machine)];
+end
+if isfield(row, 'to_machine') && ~isempty(row.to_machine)
+    parts{end + 1} = ['to=', num2str(row.to_machine)];
+end
+text = strjoin(parts, ' ');
+end
+
+function text = short_text(value)
+text = char(string(value));
+text = strtrim(regexprep(text, '[\r\n]+', ' '));
+if numel(text) > 40
+    text = [text(1:37), '...'];
+end
 end
 
 function text = format_exception(err)
