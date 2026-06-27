@@ -26,6 +26,9 @@ end
 if ~exist('datasets', 'var')
     datasets = {'data_sample/Mk01.fjs'};
 end
+if ~exist('strategyPolicies', 'var')
+    strategyPolicies = {'auto_selection'};
+end
 
 outputDir = make_output_dir(projectRoot);
 outputCsv = fullfile(outputDir, 'batch_random_order_cancellation.csv');
@@ -33,20 +36,25 @@ rows = repmat(empty_row(), 1, 0);
 
 for datasetIdx = 1:numel(datasets)
     dataset = datasets{datasetIdx};
-    try
-        datasetState = load_dataset_state(projectRoot, dataset);
-    catch err
-        rows = append_dataset_error_rows( ...
-            rows, dataset, seeds, cancelTimes, err.message);
-        continue
-    end
+    for policyIdx = 1:numel(strategyPolicies)
+        strategyPolicy = strategyPolicies{policyIdx};
+        try
+            datasetState = load_dataset_state(projectRoot, dataset);
+        catch err
+            rows = append_dataset_error_rows( ...
+                rows, dataset, seeds, cancelTimes, strategyPolicy, ...
+                err.message);
+            continue
+        end
 
-    for timeIdx = 1:numel(cancelTimes)
-        cancelTime = cancelTimes(timeIdx);
-        for seedIdx = 1:numel(seeds)
-            seed = seeds(seedIdx);
-            rows(end + 1) = run_one_random_case( ...
-                datasetState, dataset, seed, cancelTime);
+        for timeIdx = 1:numel(cancelTimes)
+            cancelTime = cancelTimes(timeIdx);
+            for seedIdx = 1:numel(seeds)
+                seed = seeds(seedIdx);
+                rows(end + 1) = run_one_random_case( ...
+                    datasetState, dataset, seed, cancelTime, ...
+                    strategyPolicy);
+            end
         end
     end
 end
@@ -57,6 +65,7 @@ fprintf('random order cancellation batch\n');
 fprintf('dataset_count: %d\n', numel(datasets));
 fprintf('seed_count: %d\n', numel(seeds));
 fprintf('cancel_time_count: %d\n', numel(cancelTimes));
+fprintf('strategy_policy_count: %d\n', numel(strategyPolicies));
 fprintf('row_count: %d\n', numel(rows));
 fprintf('output_csv: %s\n', outputCsv);
 
@@ -79,11 +88,13 @@ datasetState.baselineSchedule = baselineSchedule;
 datasetState.baselineCmax = baselineMetrics.Cmax;
 end
 
-function row = run_one_random_case(datasetState, dataset, seed, cancelTime)
+function row = run_one_random_case( ...
+    datasetState, dataset, seed, cancelTime, strategyPolicy)
 row = empty_row();
 row.dataset = dataset;
 row.seed = seed;
 row.cancel_time = cancelTime;
+row.strategy_policy = strategyPolicy;
 
 try
     if cancelTime < 0 || cancelTime >= datasetState.baselineCmax
@@ -104,11 +115,16 @@ try
     end
 
     scenario = scenarios(1);
+    runConfig = struct();
+    runConfig.strategy_policy = strategyPolicy;
     result = run_order_cancellation_library_scenario( ...
         datasetState.problem, datasetState.machineData, ...
         datasetState.agvData, datasetState.baselineSchedule, ...
-        scenario, struct());
+        scenario, runConfig);
     row = fill_success_row(row, result);
+    if isfield(result, 'error_message') && ~isempty(result.error_message)
+        row.error_message = result.error_message;
+    end
 catch err
     row.error_message = err.message;
 end
@@ -128,9 +144,17 @@ end
 function row = fill_success_row(row, result)
 row.canceled_order_id = result.cancel_job_id;
 row.selected_strategy = result.selected_strategy;
-row.run_through = result.local_candidate_isFeasible || ...
-    result.complete_candidate_isFeasible;
-row.feasible = result.local_isFeasible || result.complete_isFeasible;
+if isfield(result, 'run_through')
+    row.run_through = logical(result.run_through);
+else
+    row.run_through = result.local_candidate_isFeasible || ...
+        result.complete_candidate_isFeasible;
+end
+if isfield(result, 'feasible')
+    row.feasible = logical(result.feasible);
+else
+    row.feasible = result.local_isFeasible || result.complete_isFeasible;
+end
 
 switch result.selected_strategy
     case 'local_repair'
@@ -147,13 +171,14 @@ end
 end
 
 function rows = append_dataset_error_rows(rows, dataset, seeds, cancelTimes, ...
-    message)
+    strategyPolicy, message)
 for timeIdx = 1:numel(cancelTimes)
     for seedIdx = 1:numel(seeds)
         row = empty_row();
         row.dataset = dataset;
         row.seed = seeds(seedIdx);
         row.cancel_time = cancelTimes(timeIdx);
+        row.strategy_policy = strategyPolicy;
         row.error_message = message;
         rows(end + 1) = row;
     end
@@ -183,13 +208,14 @@ end
 cleanup = onCleanup(@() fclose(fid));
 
 fprintf(fid, ['dataset,seed,cancel_time,canceled_order_id,', ...
-    'selected_strategy,run_through,feasible,Cmax_delta,SD,TD,Y,', ...
-    'error_message\n']);
+    'strategy_policy,selected_strategy,run_through,feasible,', ...
+    'Cmax_delta,SD,TD,Y,error_message\n']);
 for i = 1:numel(rows)
     row = rows(i);
-    fprintf(fid, '%s,%d,%.6f,%g,%s,%d,%d,%.6f,%.6f,%.6f,%.6f,%s\n', ...
+    fprintf(fid, '%s,%d,%.6f,%g,%s,%s,%d,%d,%.6f,%.6f,%.6f,%.6f,%s\n', ...
         csv_text(row.dataset), row.seed, row.cancel_time, ...
-        row.canceled_order_id, csv_text(row.selected_strategy), ...
+        row.canceled_order_id, csv_text(row.strategy_policy), ...
+        csv_text(row.selected_strategy), ...
         row.run_through, row.feasible, row.Cmax_delta, row.SD, row.TD, ...
         row.Y, csv_text(row.error_message));
 end
@@ -207,6 +233,7 @@ row.dataset = '';
 row.seed = NaN;
 row.cancel_time = NaN;
 row.canceled_order_id = NaN;
+row.strategy_policy = '';
 row.selected_strategy = '';
 row.run_through = false;
 row.feasible = false;

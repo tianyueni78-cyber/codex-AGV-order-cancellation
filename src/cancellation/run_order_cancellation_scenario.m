@@ -49,13 +49,14 @@ evaluationConfig = build_minmax_evaluation_config( ...
 [localEvaluation, completeEvaluation] = evaluate_candidates( ...
     baselineSchedule, localCandidate, completeCandidate, cancel, ...
     machineData, agvData, evaluationConfig);
-selection = select_order_cancellation_strategy( ...
-    localEvaluation, completeEvaluation);
+strategyPolicy = resolve_strategy_policy(config);
+[selection, selectionMessage] = select_order_cancellation_strategy_by_policy( ...
+    strategyPolicy, localEvaluation, completeEvaluation);
 
 result = build_result_row( ...
     scenarioName, seed, cancel, state, localCandidate, ...
     completeCandidate, localEvaluation, completeEvaluation, selection, ...
-    evaluationConfig);
+    evaluationConfig, strategyPolicy, selectionMessage);
 end
 
 function require_problem(problem)
@@ -185,6 +186,82 @@ completeEvaluation = evaluate_order_cancellation_candidate( ...
     config, 'complete_rescheduling');
 end
 
+function strategyPolicy = resolve_strategy_policy(config)
+strategyPolicy = 'auto_selection';
+if isstruct(config) && isfield(config, 'strategy_policy') && ...
+        ~isempty(config.strategy_policy)
+    strategyPolicy = char(string(config.strategy_policy));
+end
+end
+
+function [selection, message] = select_order_cancellation_strategy_by_policy( ...
+    strategyPolicy, localEvaluation, completeEvaluation)
+message = '';
+switch strategyPolicy
+    case 'auto_selection'
+        selection = select_order_cancellation_strategy( ...
+            localEvaluation, completeEvaluation);
+    case 'local_only'
+        selection = select_forced_candidate(localEvaluation, ...
+            'local_repair', 'forced_local_only');
+        if ~selection.isSelected
+            message = 'Forced local_only policy could not use local_repair.';
+        end
+    case 'complete_only'
+        selection = select_forced_candidate(completeEvaluation, ...
+            'complete_rescheduling', 'forced_complete_only');
+        if ~selection.isSelected
+            message = ['Forced complete_only policy could not use ', ...
+                'complete_rescheduling.'];
+        end
+    otherwise
+        selection = select_order_cancellation_strategy( ...
+            localEvaluation, completeEvaluation);
+        message = sprintf('Unsupported strategy_policy: %s', strategyPolicy);
+        selection.report.errors{end + 1} = message;
+        selection.isSelected = false;
+        selection.reason = 'unsupported_strategy_policy';
+    end
+end
+
+function selection = select_forced_candidate(evaluation, strategyName, ...
+    reason)
+selection = empty_forced_selection(strategyName);
+if is_feasible_evaluation(evaluation)
+    selection.name = strategyName;
+    selection.reason = reason;
+    selection.selectedY = evaluation.metrics.Y;
+    selection.isSelected = true;
+else
+    selection.reason = [reason, '_infeasible'];
+    selection.report.errors{end + 1} = ...
+        sprintf('Forced strategy %s is infeasible.', strategyName);
+end
+selection.report.isFeasible = selection.isSelected;
+end
+
+function selection = empty_forced_selection(strategyName)
+selection = struct();
+selection.name = '';
+selection.reason = '';
+selection.selectedY = [];
+selection.comparedStrategies = {strategyName};
+selection.isSelected = false;
+selection.candidates = struct();
+selection.report = struct();
+selection.report.errors = {};
+selection.report.warnings = {};
+selection.report.isFeasible = false;
+end
+
+function tf = is_feasible_evaluation(evaluation)
+tf = isstruct(evaluation) && isfield(evaluation, 'metrics') && ...
+    isfield(evaluation.metrics, 'isFeasible') && ...
+    logical(evaluation.metrics.isFeasible) && ...
+    isfield(evaluation.metrics, 'Y') && isnumeric(evaluation.metrics.Y) && ...
+    isscalar(evaluation.metrics.Y);
+end
+
 function config = build_minmax_evaluation_config( ...
     localEvaluation, completeEvaluation, fallbackConfig)
 config = fallbackConfig;
@@ -243,10 +320,11 @@ end
 function result = build_result_row( ...
     scenarioName, seed, cancel, state, localCandidate, ...
     completeCandidate, localEvaluation, completeEvaluation, selection, ...
-    evaluationConfig)
+    evaluationConfig, strategyPolicy, selectionMessage)
 result = struct();
 result.scenario_name = scenarioName;
 result.seed = seed;
+result.strategy_policy = strategyPolicy;
 result.cancel_job_id = cancel.job_id;
 result.cancel_time = cancel.cancel_time;
 result.cancel_policy = cancel.policy;
@@ -306,6 +384,17 @@ result.complete_Y = value_or_nan(completeEvaluation.metrics, 'Y');
 result.selected_strategy = selection.name;
 result.selected_reason = selection.reason;
 result.selected_Y = value_or_nan(selection, 'selectedY');
+result.run_through = selection.isSelected;
+result.feasible = selection.isSelected;
+result.error_message = selectionMessage;
+if isempty(result.error_message) && ~selection.isSelected
+    if isfield(selection, 'reason') && ~isempty(selection.reason)
+        result.error_message = selection.reason;
+    elseif isfield(selection, 'report') && isfield(selection.report, ...
+            'errors') && ~isempty(selection.report.errors)
+        result.error_message = strjoin(selection.report.errors, ' | ');
+    end
+end
 
 result.details = struct();
 result.details.cancel = cancel;
