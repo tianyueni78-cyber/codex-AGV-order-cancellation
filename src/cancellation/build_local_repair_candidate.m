@@ -11,8 +11,8 @@ end
 
 candidate = remove_cancelled_machine_operations( ...
     problem, schedule, state, cancel);
-[candidate.machineTable, candidate.AGVTable] = prune_cancelled_job_records( ...
-    candidate.machineTable, candidate.AGVTable, cancel.job_id);
+candidate.machineTable = prune_cancelled_job_records( ...
+    candidate.machineTable, cancel.job_id);
 [machineIsFeasible, machineReport] = ...
     check_machine_table_feasibility(candidate.machineTable);
 candidate.report.machineConflictCheck = machineReport;
@@ -30,8 +30,8 @@ agvCandidate = remove_cancelled_agv_tasks( ...
 if ~agvCandidate.isFeasible
     candidate.report.agvConflictCheck = agvCandidate.report;
     candidate = merge_agv_candidate(candidate, agvCandidate);
-    [candidate.machineTable, candidate.AGVTable] = prune_cancelled_job_records( ...
-        candidate.machineTable, candidate.AGVTable, cancel.job_id);
+    candidate.machineTable = prune_cancelled_job_records( ...
+        candidate.machineTable, cancel.job_id);
     candidate = mark_final_feasibility(candidate);
     return
 end
@@ -40,9 +40,13 @@ candidate.AGVTable = agvCandidate.AGVTable;
 candidate.removed_agv_tasks = agvCandidate.removed_agv_tasks;
 candidate.report.removedAgvTaskCount = ...
     agvCandidate.report.removedAgvTaskCount;
+candidate.report.frozenProcessingAgvTaskCount = ...
+    agvCandidate.report.frozenProcessingAgvTaskCount;
+candidate.report.frozenProcessingAgvTasks = ...
+    agvCandidate.report.frozenProcessingAgvTasks;
 candidate.report = append_check_errors(candidate.report, machineReport);
-[candidate.machineTable, candidate.AGVTable] = prune_cancelled_job_records( ...
-    candidate.machineTable, candidate.AGVTable, cancel.job_id);
+candidate.machineTable = prune_cancelled_job_records( ...
+    candidate.machineTable, cancel.job_id);
 
 [agvIsFeasible, agvReport] = ...
     check_agv_table_feasibility(candidate.AGVTable);
@@ -59,10 +63,8 @@ candidate.isFeasible = machineIsFeasible && agvIsFeasible && ...
     isempty(candidate.report.rejectedReasons);
 end
 
-function [machineTable, AGVTable] = prune_cancelled_job_records( ...
-    machineTable, AGVTable, jobId)
+function machineTable = prune_cancelled_job_records(machineTable, jobId)
 machineTable = prune_job_from_table(machineTable, jobId, 'job');
-AGVTable = prune_job_from_table(AGVTable, jobId, 'job');
 end
 
 function tableValue = prune_job_from_table(tableValue, jobId, fieldName)

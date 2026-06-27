@@ -90,11 +90,6 @@ if state.has_unsupported_operations
         'Cancelled job has processing machine operations.';
 end
 
-if state.has_unsupported_agv_tasks
-    report.rejectedReasons{end + 1} = ...
-        'Cancelled job has processing AGV tasks.';
-end
-
 if state.cancel.job_id ~= cancel.job_id
     report.rejectedReasons{end + 1} = ...
         'state.cancel.job_id does not match cancel.job_id.';

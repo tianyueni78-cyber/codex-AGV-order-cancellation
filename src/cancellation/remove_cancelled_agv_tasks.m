@@ -27,8 +27,8 @@ if ~isempty(candidate.report.rejectedReasons) || ...
     return
 end
 
-agvTasksToRemove = select_removable_agv_tasks( ...
-    candidate.AGVTable, cancel);
+[agvTasksToRemove, frozenProcessingAgvTasks] = ...
+    select_removable_agv_tasks(candidate.AGVTable, cancel);
 
 for i = 1:numel(agvTasksToRemove)
     agvTask = agvTasksToRemove(i);
@@ -36,10 +36,11 @@ for i = 1:numel(agvTasksToRemove)
     candidate.removed_agv_tasks(end + 1) = agvTask;
 end
 
-candidate.AGVTable = prune_job_from_agv_table( ...
-    candidate.AGVTable, cancel.job_id);
 candidate.report.removedAgvTaskCount = ...
     numel(candidate.removed_agv_tasks);
+candidate.report.frozenProcessingAgvTaskCount = ...
+    numel(frozenProcessingAgvTasks);
+candidate.report.frozenProcessingAgvTasks = frozenProcessingAgvTasks;
 candidate.isFeasible = true;
 end
 
@@ -88,11 +89,6 @@ if state.has_unsupported_operations
         'Cancelled job has processing machine operations.';
 end
 
-if state.has_unsupported_agv_tasks
-    report.rejectedReasons{end + 1} = ...
-        'Cancelled job has processing AGV tasks.';
-end
-
 if state.cancel.job_id ~= cancel.job_id
     report.rejectedReasons{end + 1} = ...
         'state.cancel.job_id does not match cancel.job_id.';
@@ -104,8 +100,10 @@ if state.cancel.cancel_time ~= cancel.cancel_time
 end
 end
 
-function agvTasksToRemove = select_removable_agv_tasks(AGVTable, cancel)
+function [agvTasksToRemove, frozenProcessingAgvTasks] = ...
+    select_removable_agv_tasks(AGVTable, cancel)
 agvTasksToRemove = empty_agv_task_array();
+frozenProcessingAgvTasks = empty_agv_task_array();
 
 for agvIdx = 1:numel(AGVTable)
     blocks = AGVTable{agvIdx};
@@ -131,29 +129,18 @@ for agvIdx = 1:numel(AGVTable)
         agvTask.status = '';
         agvTask.load_status = [];
         agvTask.charge = [];
-        agvTasksToRemove(end + 1) = agvTask;
+        if block.start > cancel.cancel_time
+            agvTasksToRemove(end + 1) = agvTask;
+        elseif block.start <= cancel.cancel_time && ...
+                cancel.cancel_time < block.end
+            frozenProcessingAgvTasks(end + 1) = agvTask;
+        end
     end
 end
 
 agvTasksToRemove = sort_agv_tasks_for_deletion(agvTasksToRemove);
-end
-
-function AGVTable = prune_job_from_agv_table(AGVTable, jobId)
-for agvIdx = 1:numel(AGVTable)
-    blocks = AGVTable{agvIdx};
-    if isempty(blocks) || ~isstruct(blocks)
-        continue
-    end
-
-    keep = true(1, numel(blocks));
-    for blockIdx = 1:numel(blocks)
-        block = blocks(blockIdx);
-        if isfield(block, 'job') && block.job == jobId
-            keep(blockIdx) = false;
-        end
-    end
-    AGVTable{agvIdx} = blocks(keep);
-end
+frozenProcessingAgvTasks = sort_agv_tasks_for_deletion( ...
+    frozenProcessingAgvTasks);
 end
 
 function agvTasks = sort_agv_tasks_for_deletion(agvTasks)
@@ -177,6 +164,8 @@ report.warnings = {};
 report.rejectedReasons = {};
 report.removedOperationCount = 0;
 report.removedAgvTaskCount = 0;
+report.frozenProcessingAgvTaskCount = 0;
+report.frozenProcessingAgvTasks = empty_agv_task_array();
 report.machineConflictCheck = struct();
 report.agvConflictCheck = struct();
 report.jobSequenceCheck = struct();

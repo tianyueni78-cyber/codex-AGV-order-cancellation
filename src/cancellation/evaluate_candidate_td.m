@@ -36,6 +36,9 @@ if ~isempty(candidateCancelledTasks)
         if is_cancelled_task_completed_history(task, cancel)
             continue
         end
+        if is_cancelled_task_frozen_processing(task, cancel)
+            continue
+        end
         report.errors{end + 1} = sprintf( ...
             'Cancelled job %d AGV task operation %d appears in candidate.', ...
             task.job_id, task.operation_id);
@@ -78,6 +81,18 @@ if ~isnumeric(cancel.cancel_time) || ~isscalar(cancel.cancel_time)
     return
 end
 isCompletedHistory = task.end_time <= cancel.cancel_time;
+end
+
+function isFrozenProcessing = is_cancelled_task_frozen_processing(task, cancel)
+isFrozenProcessing = false;
+if ~isfield(cancel, 'cancel_time')
+    return
+end
+if ~isnumeric(cancel.cancel_time) || ~isscalar(cancel.cancel_time)
+    return
+end
+isFrozenProcessing = task.start_time <= cancel.cancel_time && ...
+    cancel.cancel_time < task.end_time;
 end
 
 function [tasks, cancelledTasks, report] = collect_agv_tasks( ...
