@@ -64,7 +64,7 @@ for datasetIdx = 1:numel(datasets)
         catch err
             rows = append_dataset_error_rows( ...
                 rows, dataset, seeds, cancelTimes, strategyPolicy, ...
-                err.message);
+                format_exception(err));
             continue
         end
 
@@ -175,7 +175,8 @@ try
         row.error_message = result.error_message;
     end
 catch err
-    row.error_message = err.message;
+    row.error_message = format_exception(err);
+    row.diagnostic_note = row.error_message;
 end
 end
 
@@ -315,11 +316,13 @@ switch result.selected_strategy
         row.TD = result.local_TD;
         row.Y = result.local_Y;
     case 'complete_rescheduling'
-        row.Cmax_delta = result.complete_Cmax_delta;
-        row.SD = result.complete_SD;
-        row.TD = result.complete_TD;
-        row.Y = result.complete_Y;
+    row.Cmax_delta = result.complete_Cmax_delta;
+    row.SD = result.complete_SD;
+    row.TD = result.complete_TD;
+    row.Y = result.complete_Y;
 end
+
+row = fill_diagnostic_fields(row, result);
 end
 
 function rows = append_dataset_error_rows(rows, dataset, seeds, cancelTimes, ...
@@ -332,6 +335,7 @@ for timeIdx = 1:numel(cancelTimes)
         row.cancel_time = cancelTimes(timeIdx);
         row.strategy_policy = strategyPolicy;
         row.error_message = message;
+        row.diagnostic_note = message;
         rows(end + 1) = row;
     end
 end
@@ -361,15 +365,32 @@ cleanup = onCleanup(@() fclose(fid));
 
 fprintf(fid, ['dataset,seed,cancel_time,canceled_order_id,', ...
     'strategy_policy,selected_strategy,run_through,feasible,', ...
-    'Cmax_delta,SD,TD,Y,error_message\n']);
+    'Cmax_delta,SD,TD,Y,local_repair_status,local_repair_error,', ...
+    'complete_rescheduling_status,complete_rescheduling_error,', ...
+    'canceled_order_state_at_cancel_time,', ...
+    'canceled_order_started_op_count,', ...
+    'canceled_order_finished_op_count,', ...
+    'canceled_order_unstarted_op_count,', ...
+    'frozen_operation_count,remaining_operation_count,', ...
+    'diagnostic_note,error_message\n']);
 for i = 1:numel(rows)
     row = rows(i);
-    fprintf(fid, '%s,%d,%.6f,%g,%s,%s,%d,%d,%.6f,%.6f,%.6f,%.6f,%s\n', ...
+    fprintf(fid, ['%s,%d,%.6f,%g,%s,%s,%d,%d,%.6f,%.6f,%.6f,%.6f,', ...
+        '%s,%s,%s,%s,%s,%d,%d,%d,%d,%d,%s,%s\n'], ...
         csv_text(row.dataset), row.seed, row.cancel_time, ...
         row.canceled_order_id, csv_text(row.strategy_policy), ...
         csv_text(row.selected_strategy), ...
         row.run_through, row.feasible, row.Cmax_delta, row.SD, row.TD, ...
-        row.Y, csv_text(row.error_message));
+        row.Y, csv_text(row.local_repair_status), ...
+        csv_text(row.local_repair_error), ...
+        csv_text(row.complete_rescheduling_status), ...
+        csv_text(row.complete_rescheduling_error), ...
+        csv_text(row.canceled_order_state_at_cancel_time), ...
+        row.canceled_order_started_op_count, ...
+        row.canceled_order_finished_op_count, ...
+        row.canceled_order_unstarted_op_count, ...
+        row.frozen_operation_count, row.remaining_operation_count, ...
+        csv_text(row.diagnostic_note), csv_text(row.error_message));
 end
 end
 
@@ -393,7 +414,471 @@ row.Cmax_delta = NaN;
 row.SD = NaN;
 row.TD = NaN;
 row.Y = NaN;
+row.local_repair_status = 'not_called';
+row.local_repair_error = 'unknown';
+row.complete_rescheduling_status = 'not_called';
+row.complete_rescheduling_error = 'unknown';
+row.canceled_order_state_at_cancel_time = 'unknown';
+row.canceled_order_started_op_count = 0;
+row.canceled_order_finished_op_count = 0;
+row.canceled_order_unstarted_op_count = 0;
+row.frozen_operation_count = 0;
+row.remaining_operation_count = 0;
+row.diagnostic_note = '';
 row.error_message = '';
+end
+
+function row = fill_diagnostic_fields(row, result)
+if ~isstruct(result)
+    row.diagnostic_note = 'result_missing';
+    return
+end
+
+state = struct();
+if isfield(result, 'details') && isstruct(result.details) && ...
+        isfield(result.details, 'state')
+    state = result.details.state;
+end
+
+cancel.job_id = read_numeric_field(result, 'cancel_job_id', NaN);
+cancel.cancel_time = read_numeric_field(result, 'cancel_time', NaN);
+
+[row.canceled_order_state_at_cancel_time, ...
+    row.canceled_order_started_op_count, ...
+    row.canceled_order_finished_op_count, ...
+    row.canceled_order_unstarted_op_count, ...
+    row.frozen_operation_count, row.remaining_operation_count] = ...
+    summarize_cancellation_state(state, cancel);
+
+localCandidate = struct();
+completeCandidate = struct();
+localEvaluation = struct();
+completeEvaluation = struct();
+selection = struct();
+if isfield(result, 'details') && isstruct(result.details)
+    if isfield(result.details, 'localCandidate')
+        localCandidate = result.details.localCandidate;
+    end
+    if isfield(result.details, 'completeCandidate')
+        completeCandidate = result.details.completeCandidate;
+    end
+    if isfield(result.details, 'localEvaluation')
+        localEvaluation = result.details.localEvaluation;
+    end
+    if isfield(result.details, 'completeEvaluation')
+        completeEvaluation = result.details.completeEvaluation;
+    end
+    if isfield(result.details, 'selection')
+        selection = result.details.selection;
+    end
+end
+
+[row.local_repair_status, row.local_repair_error] = ...
+    summarize_candidate_diagnostics(localCandidate, localEvaluation, ...
+    get_selection_candidate_status(selection, 'localRepair'), ...
+    state, cancel, 'local_repair');
+[row.complete_rescheduling_status, row.complete_rescheduling_error] = ...
+    summarize_candidate_diagnostics(completeCandidate, ...
+    completeEvaluation, ...
+    get_selection_candidate_status(selection, 'completeRescheduling'), ...
+    state, cancel, 'complete_rescheduling');
+
+row.diagnostic_note = build_diagnostic_note(row);
+end
+
+function [status, errorText] = summarize_candidate_diagnostics( ...
+    candidate, evaluation, selectionStatus, state, cancel, candidateName)
+status = 'unknown';
+errorText = 'unknown';
+report = struct();
+
+if is_selection_status_feasible(selectionStatus)
+    status = 'candidate_generated';
+    errorText = '';
+    return
+end
+
+if ~isstruct(candidate)
+    status = 'not_called';
+    return
+end
+
+if isempty_candidate(candidate)
+    status = 'empty_candidate';
+    errorText = summarize_rejection_reason(report, state, cancel, ...
+        selectionStatus, candidateName);
+    if strcmp(errorText, 'unknown')
+        errorText = 'empty candidate';
+    end
+    return
+end
+
+if isfield(candidate, 'report') && isstruct(candidate.report)
+    report = candidate.report;
+end
+
+if is_selection_status_infeasible(selectionStatus)
+    [status, errorText] = summarize_selection_rejection( ...
+        selectionStatus, report, evaluation, state, cancel, candidateName);
+    return
+end
+
+if isfield(candidate, 'isFeasible') && ~logical(candidate.isFeasible)
+    status = 'feasible_flag_false';
+    errorText = 'feasible flag false';
+    return
+end
+
+if is_nonempty_cell_field(report, 'errors') && ...
+        isempty_cell_field(report, 'rejectedReasons')
+    status = 'rejected_by_validation';
+    errorText = 'validation failed';
+    return
+end
+
+if is_nonempty_cell_field(report, 'rejectedReasons')
+    status = 'infeasible_candidate';
+    errorText = summarize_rejection_reason(report, state, cancel, ...
+        selectionStatus, candidateName);
+    return
+end
+
+if is_evaluation_infeasible(evaluation)
+    status = 'rejected_by_validation';
+    errorText = 'validation failed';
+    return
+end
+end
+
+function status = get_selection_candidate_status(selection, fieldName)
+status = struct();
+if ~isstruct(selection) || ~isfield(selection, 'candidates') || ...
+        ~isstruct(selection.candidates) || ...
+        ~isfield(selection.candidates, fieldName)
+    return
+end
+status = selection.candidates.(fieldName);
+end
+
+function tf = is_selection_status_feasible(selectionStatus)
+tf = isstruct(selectionStatus) && isfield(selectionStatus, 'isFeasible') && ...
+    logical(selectionStatus.isFeasible);
+end
+
+function tf = is_selection_status_infeasible(selectionStatus)
+tf = isstruct(selectionStatus) && isfield(selectionStatus, 'isFeasible') && ...
+    ~logical(selectionStatus.isFeasible);
+end
+
+function tf = isempty_candidate(candidate)
+tf = false;
+if isfield(candidate, 'machineTable')
+    tf = tf || isempty(candidate.machineTable);
+end
+if isfield(candidate, 'AGVTable')
+    tf = tf || isempty(candidate.AGVTable);
+end
+end
+
+function tf = is_evaluation_infeasible(evaluation)
+tf = ~isstruct(evaluation) || ~isfield(evaluation, 'metrics') || ...
+    ~isfield(evaluation.metrics, 'isFeasible') || ...
+    ~logical(evaluation.metrics.isFeasible);
+end
+
+function [status, errorText] = summarize_selection_rejection( ...
+    selectionStatus, report, evaluation, state, cancel, candidateName)
+status = 'unknown';
+errorText = 'unknown';
+
+if ~isstruct(selectionStatus)
+    return
+end
+
+reasons = {};
+if isfield(selectionStatus, 'rejectedReasons') && ...
+        iscell(selectionStatus.rejectedReasons)
+    reasons = selectionStatus.rejectedReasons;
+end
+joinedReasons = lower(strjoin(reasons, ' | '));
+
+if contains(joinedReasons, 'candidate_infeasible')
+    status = 'infeasible_candidate';
+    errorText = 'infeasible candidate';
+elseif contains(joinedReasons, 'evaluation_infeasible') || ...
+        contains(joinedReasons, 'invalid_evaluation')
+    status = 'rejected_by_validation';
+    errorText = 'validation failed';
+elseif contains(joinedReasons, 'missing_y')
+    status = 'rejected_by_validation';
+    errorText = 'missing objective';
+elseif contains(joinedReasons, 'invalid_candidate')
+    status = 'empty_candidate';
+    errorText = 'empty candidate';
+else
+    [status, errorText] = summarize_rejection_reason(report, state, cancel, ...
+        selectionStatus, candidateName);
+    if strcmp(errorText, 'unknown') && is_evaluation_infeasible(evaluation)
+        status = 'rejected_by_validation';
+        errorText = 'validation failed';
+    end
+end
+end
+
+function errorText = summarize_rejection_reason(report, state, cancel, ...
+    selectionStatus, candidateName)
+errorText = 'unknown';
+reasons = {};
+if isfield(report, 'rejectedReasons') && iscell(report.rejectedReasons)
+    reasons = report.rejectedReasons;
+end
+joinedReasons = lower(strjoin(reasons, ' | '));
+
+if contains(joinedReasons, 'processing') || ...
+        contains(joinedReasons, 'unsupported')
+    errorText = 'canceled order already started';
+elseif contains(joinedReasons, 'finished')
+    errorText = 'canceled order already finished';
+elseif contains(joinedReasons, 'remaining_operation_set_infeasible') || ...
+        contains(joinedReasons, 'no remaining') || ...
+        (strcmp(candidateName, 'complete_rescheduling') && ...
+        count_records(get_state_records(state, ...
+        'remaining_unfinished_operations')) == 0)
+    errorText = 'no remaining operations';
+elseif is_selection_status_feasible(selectionStatus)
+    errorText = '';
+elseif contains(joinedReasons, 'invalid') || contains(joinedReasons, 'mismatch') || ...
+        contains(joinedReasons, 'infeasible') || contains(joinedReasons, 'decode')
+    errorText = 'validation failed';
+elseif summarize_cancel_state_label(state, cancel) == "processing_at_cancel_time"
+    errorText = 'canceled order already started';
+elseif summarize_cancel_state_label(state, cancel) == "all_finished"
+    errorText = 'canceled order already finished';
+end
+end
+
+function [stateLabel, startedCount, finishedCount, unstartedCount, ...
+    frozenCount, remainingCount] = summarize_cancellation_state(state, cancel)
+stateLabel = 'unknown';
+startedCount = 0;
+finishedCount = 0;
+unstartedCount = 0;
+frozenCount = 0;
+remainingCount = 0;
+
+if ~isstruct(state) || ~isstruct(cancel) || ~isfield(cancel, 'job_id') || ...
+        ~isfinite(cancel.job_id)
+    return
+end
+
+finishedRecords = filter_records_by_job( ...
+    get_state_records(state, 'completed_operations'), cancel.job_id);
+processingRecords = filter_records_by_job( ...
+    get_state_records(state, 'processing_operations'), cancel.job_id);
+unstartedRecords = filter_records_by_job( ...
+    get_state_records(state, 'unstarted_operations'), cancel.job_id);
+cancelledRecords = filter_records_by_job( ...
+    get_state_records(state, 'cancelled_unfinished_operations'), ...
+    cancel.job_id);
+
+finishedCount = count_records(finishedRecords);
+startedCount = finishedCount + count_records(processingRecords);
+unstartedCount = count_records(unstartedRecords);
+if unstartedCount == 0
+    unstartedCount = count_records(filter_records_by_job( ...
+        cancelledRecords, cancel.job_id));
+end
+frozenCount = count_records(get_state_records(state, 'completed_operations'));
+remainingCount = count_records(get_state_records(state, ...
+    'remaining_unfinished_operations'));
+
+if startedCount == 0 && unstartedCount == 0 && count_records(cancelledRecords) == 0 && ...
+        finishedCount == 0
+    stateLabel = 'not_found';
+elseif count_records(processingRecords) > 0
+    stateLabel = 'processing_at_cancel_time';
+elseif finishedCount == 0 && unstartedCount > 0
+    stateLabel = 'all_unstarted';
+elseif finishedCount > 0 && unstartedCount == 0
+    stateLabel = 'all_finished';
+elseif finishedCount > 0 && unstartedCount > 0
+    stateLabel = 'partially_started';
+else
+    stateLabel = 'unknown';
+end
+end
+
+function records = get_state_records(state, fieldName)
+records = [];
+if ~isstruct(state) || ~isfield(state, fieldName)
+    return
+end
+records = state.(fieldName);
+end
+
+function records = filter_records_by_job(records, jobId)
+if isempty(records) || ~isfinite(jobId)
+    return
+end
+
+if istable(records)
+    if ~ismember('job_id', records.Properties.VariableNames)
+        records = records([],:);
+        return
+    end
+    records = records(records.job_id == jobId, :);
+elseif iscell(records)
+    kept = {};
+    for i = 1:numel(records)
+        item = records{i};
+        if isstruct(item) && isfield(item, 'job_id') && item.job_id == jobId
+            kept{end + 1} = item; %#ok<AGROW>
+        end
+    end
+    if isempty(kept)
+        records = {};
+    else
+        records = kept;
+    end
+elseif isstruct(records)
+    if ~isfield(records, 'job_id')
+        records = records([]); %#ok<NASGU>
+        return
+    end
+    records = records([records.job_id] == jobId);
+else
+    records = [];
+end
+end
+
+function count = count_records(records)
+if isempty(records)
+    count = 0;
+elseif istable(records)
+    count = height(records);
+elseif iscell(records)
+    count = numel(records);
+elseif isstruct(records)
+    count = numel(records);
+else
+    count = 0;
+end
+end
+
+function tf = is_nonempty_cell_field(s, fieldName)
+tf = false;
+if ~isstruct(s) || ~isfield(s, fieldName)
+    return
+end
+value = s.(fieldName);
+tf = iscell(value) && ~isempty(value);
+end
+
+function tf = isempty_cell_field(s, fieldName)
+tf = ~is_nonempty_cell_field(s, fieldName);
+end
+
+function label = summarize_cancel_state_label(state, cancel)
+[label, ~, ~, ~, ~, ~] = summarize_cancellation_state(state, cancel);
+label = string(label);
+end
+
+function note = build_diagnostic_note(row)
+parts = {
+    ['local=', row.local_repair_status, '/', row.local_repair_error]
+    ['complete=', row.complete_rescheduling_status, '/', ...
+        row.complete_rescheduling_error]
+    ['state=', row.canceled_order_state_at_cancel_time]
+};
+note = strjoin(parts, '; ');
+end
+
+function text = format_exception(err)
+text = '';
+if (isobject(err) && isprop(err, 'identifier') && ...
+        ~isempty(err.identifier)) || ...
+        (isstruct(err) && isfield(err, 'identifier') && ...
+        ~isempty(err.identifier))
+    text = [char(string(err.identifier)), ': ', char(string(err.message))];
+elseif (isobject(err) && isprop(err, 'message')) || ...
+        (isstruct(err) && isfield(err, 'message'))
+    text = char(string(err.message));
+else
+    text = 'unknown';
+end
+end
+
+function value = read_numeric_field(obj, fieldNames, defaultValue)
+value = defaultValue;
+names = normalize_field_names(fieldNames);
+for i = 1:numel(names)
+    fieldName = names{i};
+    rawValue = [];
+    found = false;
+
+    if isstruct(obj) && isfield(obj, fieldName)
+        rawValue = obj.(fieldName);
+        found = true;
+    elseif istable(obj) && ismember(fieldName, obj.Properties.VariableNames)
+        rawValue = obj.(fieldName);
+        found = true;
+    end
+
+    if ~found
+        continue
+    end
+
+    candidate = coerce_numeric_value(rawValue);
+    if ~isempty(candidate)
+        value = candidate;
+        return
+    end
+end
+end
+
+function names = normalize_field_names(fieldNames)
+if ischar(fieldNames) || isstring(fieldNames)
+    names = {char(string(fieldNames))};
+elseif iscell(fieldNames)
+    names = cell(1, numel(fieldNames));
+    for i = 1:numel(fieldNames)
+        names{i} = char(string(fieldNames{i}));
+    end
+else
+    names = {};
+end
+end
+
+function value = coerce_numeric_value(rawValue)
+value = [];
+
+if isempty(rawValue)
+    return
+end
+
+if iscell(rawValue)
+    if isempty(rawValue)
+        return
+    end
+    rawValue = rawValue{1};
+    if isempty(rawValue)
+        return
+    end
+end
+
+if isnumeric(rawValue) || islogical(rawValue)
+    candidate = rawValue(1);
+elseif isstring(rawValue) || ischar(rawValue)
+    candidate = str2double(string(rawValue));
+else
+    return
+end
+
+if isempty(candidate) || ~isscalar(candidate) || ~isfinite(candidate)
+    return
+end
+
+value = candidate;
 end
 
 function machineData = build_sample_machine_data(machineNum)
