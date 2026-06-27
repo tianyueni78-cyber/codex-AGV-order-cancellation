@@ -24,7 +24,13 @@ if ~exist('cancelTimes', 'var')
     cancelTimes = [5, 9, 13];
 end
 if ~exist('datasets', 'var')
-    datasets = {'data_sample/Mk01.fjs'};
+    datasets = {
+        'raw_code/fjsp/Brandimarte_Data/Mk01.fjs'
+        'raw_code/fjsp/Brandimarte_Data/Mk02.fjs'
+        'raw_code/fjsp/Brandimarte_Data/Mk03.fjs'
+        'raw_code/fjsp/Brandimarte_Data/Mk04.fjs'
+        'raw_code/fjsp/Brandimarte_Data/Mk05.fjs'
+    };
 end
 if ~exist('strategyPolicies', 'var')
     strategyPolicies = {'auto_selection'};
