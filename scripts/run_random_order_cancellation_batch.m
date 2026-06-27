@@ -36,7 +36,7 @@ if ~exist('strategyPolicies', 'var')
     strategyPolicies = {'auto_selection'};
 end
 if ~exist('baseline_mode', 'var')
-    baseline_mode = 'instance_decoded';
+    baseline_mode = 'sample';
 end
 
 outputDir = make_output_dir(projectRoot);
