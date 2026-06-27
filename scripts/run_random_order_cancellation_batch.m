@@ -941,7 +941,6 @@ function reason = classify_check_report(report, fieldName, overlapText, ...
     missingText)
 reason = '';
 if ~isfield(report, fieldName) || ~isstruct(report.(fieldName))
-    reason = [fieldName, ': validator returned false without report'];
     return
 end
 checkReport = report.(fieldName);
@@ -955,7 +954,7 @@ if isfield(checkReport, 'errors') && iscell(checkReport.errors) && ...
         reason = overlapText;
     end
 else
-    reason = [fieldName, ': validator returned false without report'];
+    return
 end
 
 if strcmp(reason, 'missing schedule')
