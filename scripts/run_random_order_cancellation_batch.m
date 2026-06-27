@@ -749,6 +749,14 @@ if isempty(rawReason)
     return
 end
 
+if contains(lower(rawReason), 'metric_evaluation_failed')
+    metricReason = summarize_metric_evaluation_failure(evaluation);
+    if ~isempty(metricReason)
+        errorText = ['metric_evaluation_failed: ', metricReason];
+        return
+    end
+end
+
 mappedReason = classify_message_list({rawReason}, candidateName);
 if strcmp(mappedReason, 'unknown validation failure')
     mappedReason = classify_message_list({rawReason}, 'local_repair');
@@ -762,6 +770,79 @@ if strcmp(mappedReason, 'unknown validation failure')
 else
     errorText = mappedReason;
 end
+end
+
+function reason = summarize_metric_evaluation_failure(evaluation)
+reason = '';
+
+if ~isstruct(evaluation) || ~isfield(evaluation, 'report') || ...
+        ~isstruct(evaluation.report)
+    return
+end
+
+metricOrder = {'Cmax', 'SD', 'TD', 'energy'};
+if isfield(evaluation.report, 'metricReports') && ...
+        isstruct(evaluation.report.metricReports)
+    for i = 1:numel(metricOrder)
+        stage = metricOrder{i};
+        if ~isfield(evaluation.report.metricReports, stage)
+            continue
+        end
+
+        stageReason = summarize_metric_stage_failure( ...
+            stage, evaluation.report.metricReports.(stage));
+        if ~isempty(stageReason)
+            reason = stageReason;
+            return
+        end
+    end
+end
+
+if isfield(evaluation.report, 'errors') && iscell(evaluation.report.errors) && ...
+        ~isempty(evaluation.report.errors)
+    reason = summarize_metric_error_text(evaluation.report.errors);
+end
+end
+
+function reason = summarize_metric_stage_failure(stage, stageReport)
+reason = '';
+if ~isstruct(stageReport)
+    return
+end
+
+if isfield(stageReport, 'errors') && iscell(stageReport.errors) && ...
+        ~isempty(stageReport.errors)
+    reason = summarize_metric_error_text(stageReport.errors);
+    if isempty(reason)
+        reason = [stage, ': validation report empty'];
+    else
+        reason = [stage, ': ', reason];
+    end
+    return
+end
+
+if isfield(stageReport, 'isFeasible') && ~logical(stageReport.isFeasible)
+    reason = [stage, ': validation report empty'];
+end
+end
+
+function text = summarize_metric_error_text(messages)
+text = '';
+firstText = first_meaningful_text(messages);
+if isempty(firstText)
+    return
+end
+
+prefixes = {'Cmax', 'SD', 'TD', 'energy'};
+for i = 1:numel(prefixes)
+    prefix = [prefixes{i}, ': '];
+    if startsWith(firstText, prefix)
+        text = strtrim(firstText(numel(prefix) + 1:end));
+        return
+    end
+end
+
+text = firstText;
 end
 
 function reason = extract_first_validation_reason(selectionStatus, report, ...
