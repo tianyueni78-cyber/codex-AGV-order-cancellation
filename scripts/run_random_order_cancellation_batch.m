@@ -35,6 +35,9 @@ end
 if ~exist('strategyPolicies', 'var')
     strategyPolicies = {'auto_selection'};
 end
+if ~exist('baseline_mode', 'var')
+    baseline_mode = 'instance_decoded';
+end
 
 outputDir = make_output_dir(projectRoot);
 outputCsv = fullfile(outputDir, 'batch_random_order_cancellation.csv');
@@ -45,7 +48,8 @@ for datasetIdx = 1:numel(datasets)
     for policyIdx = 1:numel(strategyPolicies)
         strategyPolicy = strategyPolicies{policyIdx};
         try
-            datasetState = load_dataset_state(projectRoot, dataset);
+            datasetState = load_dataset_state(projectRoot, dataset, ...
+                baseline_mode);
         catch err
             rows = append_dataset_error_rows( ...
                 rows, dataset, seeds, cancelTimes, strategyPolicy, ...
@@ -72,13 +76,29 @@ fprintf('dataset_count: %d\n', numel(datasets));
 fprintf('seed_count: %d\n', numel(seeds));
 fprintf('cancel_time_count: %d\n', numel(cancelTimes));
 fprintf('strategy_policy_count: %d\n', numel(strategyPolicies));
+fprintf('baseline_mode: %s\n', baseline_mode);
 fprintf('row_count: %d\n', numel(rows));
 fprintf('output_csv: %s\n', outputCsv);
 
-function datasetState = load_dataset_state(projectRoot, dataset)
+function datasetState = load_dataset_state(projectRoot, dataset, baseline_mode)
 datasetPath = fullfile(projectRoot, dataset);
 problem = read_fjsp(datasetPath);
-baselineSchedule = build_sample_schedule(problem.machineNum);
+if strcmp(baseline_mode, 'sample')
+    machineData = build_sample_machine_data(problem.machineNum);
+    agvData = build_sample_agv_data();
+    baselineSchedule = build_sample_schedule(problem.machineNum);
+    decodeReport = struct();
+elseif strcmp(baseline_mode, 'instance_decoded')
+    baselineState = build_instance_driven_baseline_state(problem);
+    machineData = baselineState.machineData;
+    agvData = baselineState.agvData;
+    baselineSchedule = baselineState.baselineSchedule;
+    decodeReport = baselineState.decodeReport;
+else
+    error('random_order_cancellation_batch:InvalidBaselineMode', ...
+        'Unsupported baseline_mode: %s', baseline_mode);
+end
+
 [baselineMetrics, baselineReport] = evaluate_candidate_cmax( ...
     baselineSchedule, baselineSchedule);
 if ~baselineMetrics.isFeasible
@@ -88,10 +108,12 @@ end
 
 datasetState = struct();
 datasetState.problem = problem;
-datasetState.machineData = build_sample_machine_data(problem.machineNum);
-datasetState.agvData = build_sample_agv_data();
+datasetState.machineData = machineData;
+datasetState.agvData = agvData;
 datasetState.baselineSchedule = baselineSchedule;
 datasetState.baselineCmax = baselineMetrics.Cmax;
+datasetState.baselineMode = baseline_mode;
+datasetState.decodeReport = decodeReport;
 end
 
 function row = run_one_random_case( ...
@@ -145,6 +167,93 @@ config.time_windows.name = sprintf('time_%.6g', cancelTime);
 config.time_windows.cancel_time_ratio = cancelTime / baselineCmax;
 config.job_categories = {'random'};
 config.seeds = seed;
+end
+
+function baselineState = build_instance_driven_baseline_state(problem)
+machineData = build_sample_machine_data(problem.machineNum);
+agvData = build_sample_agv_data();
+decodeConfig = build_baseline_decode_config(problem, agvData);
+chrom = build_deterministic_baseline_chromosome(problem, agvData);
+[baselineSchedule, decodeReport] = decode_chromosome_independent( ...
+    chrom, problem, machineData, agvData, decodeConfig);
+
+if ~isfield(decodeReport, 'isValid') || ~decodeReport.isValid
+    if isfield(decodeReport, 'errors') && ~isempty(decodeReport.errors)
+        error('random_order_cancellation_batch:BaselineDecodeFailed', ...
+            strjoin(decodeReport.errors, newline));
+    end
+    error('random_order_cancellation_batch:BaselineDecodeFailed', ...
+        'Instance-driven baseline decoding failed.');
+end
+
+baselineState = struct();
+baselineState.baselineSchedule = baselineSchedule;
+baselineState.machineData = machineData;
+baselineState.agvData = agvData;
+baselineState.decodeReport = decodeReport;
+baselineState.baselineMode = 'instance_decoded';
+end
+
+function decodeConfig = build_baseline_decode_config(problem, agvData)
+decodeConfig = struct();
+decodeConfig.AGVEG_MAX = 100;
+decodeConfig.AGVEG_MIN = 1;
+decodeConfig.eChargeSpeed = 20;
+decodeConfig.machineTable = build_decode_machine_table(problem.machineNum);
+decodeConfig.AGVTable = build_decode_agv_table(agvData.AGVNum);
+end
+
+function chrom = build_deterministic_baseline_chromosome(problem, agvData)
+operaNum = sum(problem.operaNumVec);
+OS = build_os_sequence(problem);
+MS = build_first_machine_selection(problem);
+AS = mod(0:(operaNum - 1), agvData.AGVNum) + 1;
+SS = ones(1, 2 * operaNum);
+chrom = [OS, MS, AS, SS];
+end
+
+function OS = build_os_sequence(problem)
+OS = zeros(1, sum(problem.operaNumVec));
+pos = 1;
+for jobIdx = 1:problem.jobNum
+    for operaIdx = 1:problem.operaNumVec(jobIdx)
+        OS(pos) = jobIdx;
+        pos = pos + 1;
+    end
+end
+end
+
+function MS = build_first_machine_selection(problem)
+MS = zeros(1, sum(problem.operaNumVec));
+pos = 1;
+for jobIdx = 1:problem.jobNum
+    for operaIdx = 1:problem.operaNumVec(jobIdx)
+        candidates = problem.candidateMachine{jobIdx, operaIdx};
+        if isempty(candidates)
+            error('random_order_cancellation_batch:MissingCandidateMachine', ...
+                'candidateMachine{%d,%d} is empty.', jobIdx, operaIdx);
+        end
+        MS(pos) = 1;
+        pos = pos + 1;
+    end
+end
+end
+
+function machineTable = build_decode_machine_table(machineNum)
+machineTable = cell(1, machineNum);
+for machineIdx = 1:machineNum
+    machineTable{machineIdx} = make_machine_block(0, inf, 0, 0);
+end
+end
+
+function AGVTable = build_decode_agv_table(agvNum)
+AGVTable = cell(1, agvNum);
+for agvIdx = 1:agvNum
+    AGVTable{agvIdx} = [
+        make_agv_block(0, 0, 0, 0, -1, -1, 0)
+        make_agv_block(0, inf, 0, 0, -1, -1, 0)
+    ];
+end
 end
 
 function row = fill_success_row(row, result)
