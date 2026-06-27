@@ -445,7 +445,138 @@ outputs/order_cancellation_benchmark_smoke/20260622_162245/
 
 该结果仍然只是 smoke 验证，不作为最终阶段 L 统计结论。
 
-## 17. 阶段 L 测试和运行入口
+## 18. Step L9：运行正式 benchmark
+
+Step L9 的正式运行入口为：
+
+```matlab
+run('scripts/run_order_cancellation_benchmark.m')
+```
+
+已收到一次正式 benchmark 输出：
+
+```text
+order cancellation benchmark
+dataset_count: 1
+scenario_count: 75
+strategy_count: 2
+result_row_count: 150
+output_dir: outputs/order_cancellation_benchmark/20260622_162259
+```
+
+对应输出目录：
+
+```text
+outputs/order_cancellation_benchmark/20260622_162259/
+```
+
+本次 benchmark 范围：
+
+1. 数据实例数为 1：`data_sample/Mk01.fjs`。
+2. 场景数为 75：来源于 3 个时间窗口、5 类订单类别和 5 个 seed 的组合。
+3. 策略模式为 2 类：`fixed_weight` 和 `adaptive_weight`。
+4. 最终原始结果行为 150：每个场景对应两条策略模式结果。
+
+从 `seed_results.csv`、`feasibility_summary.csv` 和按时间窗口分组结果可得到以下结论：
+
+1. 总计 150 行结果中，有 110 行成功选出方案，整体 `win_rate = 0.733333`。
+2. 有 40 行没有可行候选，整体 `infeasible_rate = 0.266667`。
+3. 最终被选中的方案全部是 `local_repair`，共 110 次；没有出现 `complete_rescheduling` 被选中的记录。
+4. 两种策略模式表现一致：
+   `fixed_weight` 为 75 行中成功 55 行、不可行 20 行；
+   `adaptive_weight` 也为 75 行中成功 55 行、不可行 20 行。
+5. 按时间窗口看：
+   `middle` 场景 50 行中全部成功，无不可行；
+   `early` 场景 50 行中成功 40 行，不可行 10 行；
+   `late` 场景 50 行中成功 20 行，不可行 30 行。
+6. `feasibility_summary.csv` 显示：
+   `local_only = 68`，占比 `0.453333`；
+   `both_candidates_feasible = 42`，占比 `0.280000`；
+   `no_candidate_feasible = 40`，占比 `0.266667`。
+
+这些结果说明：
+
+1. 在当前 Mk01 benchmark 上，局部修复是主导性的可行方案来源。
+2. 自适应权重并没有改变最终选择结果，说明阶段 K 的规则在这个数据范围内还没有触发出与固定权重不同的选择。
+3. `middle` 时间窗口最稳定，`late` 时间窗口最容易出现不可行情形。
+4. 当前更值得继续研究的是“哪些场景会让候选整体不可行”，而不是单纯继续调权重。
+
+## 19. Step L9 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 每个实例都有配置记录 | 通过，输出目录包含 `benchmark_config_used.yaml` |
+| 每个场景都有原始 seed 结果 | 通过，`seed_results.csv` 共 150 行 |
+| 汇总表包含 `Cmax_delta`、`SD`、`TD`、`energy_delta`、`Y` | 通过，summary 和 seed 结果中均有这些字段 |
+| 包含策略胜率 | 通过，可从 `dataset_summary.csv`、`strategy_summary.csv` 和 `seed_results.csv` 统计得到 |
+| 包含不可行率 | 通过，可从 `feasibility_summary.csv` 和 `seed_results.csv` 统计得到 |
+| 输出可复现 | 通过，输出目录保留配置、原始 seed 结果和 summary |
+
+Step L9 完成标志：阶段 L 已完成一轮正式 benchmark 运行，并具备可复现输出目录。
+
+## 20. Step L10：阶段 L 项目报告
+
+当前文档已经整合了：
+
+1. 阶段 L 目标。
+2. benchmark 范围。
+3. 配置说明。
+4. 输出结构。
+5. 统计指标。
+6. 测试入口。
+7. smoke 入口。
+8. benchmark 入口。
+9. 运行预算。
+10. smoke 结果解释。
+11. 正式 benchmark 结果解释。
+12. 后续阶段入口。
+
+阶段 L 的定位仍然是“统计验证”，不是“新算法阶段”，也不声称全局最优。
+
+运行预算说明：
+
+1. 正式 benchmark 应遵守 `max_runtime_minutes`。
+2. 若超预算，应缩小 dataset、scenario 或 seed 范围。
+3. 缩小范围后应在 `benchmark_notes.md` 中记录预算限制。
+4. 不强行跑大实验。
+
+## 21. Step L11：阶段 L 静态验收
+
+| 验收项 | 结果 |
+|---|---|
+| benchmark 配置存在 | 通过，`configs/order_cancellation_benchmark.yaml` 已存在 |
+| benchmark 脚本存在 | 通过，`scripts/run_order_cancellation_benchmark.m` 已存在 |
+| benchmark 汇总函数存在 | 通过，`src/cancellation/summarize_order_cancellation_benchmark.m` 已存在 |
+| benchmark 汇总测试存在 | 通过，`tests/test_order_cancellation_benchmark_summary.m` 已存在 |
+| 阶段 L 文档存在 | 通过，当前文档即阶段 L 主入口 |
+| README 挂阶段 L 主入口 | 通过 |
+| 输出写入 `outputs/order_cancellation_benchmark/<timestamp>/` | 通过，本次输出目录为 `20260622_162259` |
+| 汇总包含均值、标准差、胜率、不可行率 | 通过 |
+| 没有机器故障逻辑 | 通过 |
+| 没有完整插单算法 | 通过 |
+| 没有强化学习 | 通过 |
+| 不声称全局最优 | 通过 |
+| `raw_code/` 无修改 | 通过 |
+
+## 22. 阶段 L 完成标志
+
+阶段 L 完成时已达到：
+
+1. 已在多个场景和多个 seed 上验证订单取消策略。
+2. 每个场景保留了原始 seed 结果。
+3. 能汇总 `Cmax_delta`、`SD`、`TD`、`energy_delta`、`Y`。
+4. 能计算策略胜率和不可行率。
+5. 能比较固定权重和自适应权重。
+6. 结论明确统计范围，不声称全局最优。
+
+阶段 L 当前结论：
+
+1. 在当前 Mk01 benchmark 范围内，`local_repair` 是实际被选中的主方案。
+2. `fixed_weight` 和 `adaptive_weight` 暂时没有表现出选择差异。
+3. 时间窗口对可行性影响明显，`middle` 最稳定，`late` 风险最高。
+4. 后续更适合进入阶段 M：多扰动扩展接口，或者回到阶段 K/L 继续调阈值和扩展数据实例。
+
+## 23. 阶段 L 测试和运行入口
 
 当前阶段 L 可手动运行的入口：
 
@@ -457,7 +588,7 @@ run('scripts/run_order_cancellation_benchmark.m')
 
 其中 `run_order_cancellation_benchmark_smoke.m` 和 `run_order_cancellation_benchmark.m` 会写入 `outputs/`，运行前需要确认；`test_order_cancellation_benchmark_summary.m` 不写 `outputs/`，只验证汇总逻辑。
 
-## 18. 支持文档入口
+## 24. 支持文档入口
 
 README 只挂阶段 L 主文档；阶段 L 依赖的上游文档可从这里进入。
 
