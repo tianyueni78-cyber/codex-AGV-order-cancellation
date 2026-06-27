@@ -50,8 +50,7 @@ if isempty(report.errors)
     TD = 0;
     for i = 1:numel(baselineTasks)
         baselineTask = baselineTasks(i);
-        candidateTask = find_task(candidateTasks, ...
-            baselineTask.job_id, baselineTask.operation_id);
+        candidateTask = find_task(candidateTasks, baselineTask);
         TD = TD + abs(candidateTask.start_time - ...
             baselineTask.start_time);
     end
@@ -117,15 +116,7 @@ for agvIdx = 1:numel(AGVTable)
             continue
         end
 
-        task = struct();
-        task.job_id = block.job;
-        task.operation_id = block.opera;
-        task.agv_id = agvIdx;
-        task.block_index = blockIdx;
-        task.start_time = require_scalar_time(block.start, ...
-            scheduleName, agvIdx, blockIdx, 'start');
-        task.end_time = require_scalar_time(block.end, ...
-            scheduleName, agvIdx, blockIdx, 'end');
+        task = make_agv_task(block, agvIdx, blockIdx, scheduleName);
 
         if task.end_time < task.start_time
             report.errors{end + 1} = sprintf( ...
@@ -141,11 +132,14 @@ for agvIdx = 1:numel(AGVTable)
             continue
         end
 
-        duplicate = find_task(tasks, task.job_id, task.operation_id);
+        duplicate = find_task(tasks, task);
         if ~isempty(duplicate)
             report.errors{end + 1} = sprintf( ...
-                '%s contains duplicate AGV task job %d operation %d.', ...
-                scheduleName, task.job_id, task.operation_id);
+                ['%s contains duplicate AGV task job %d operation %d ', ...
+                'load_status %g from_machine %g to_machine %g charge %g.'], ...
+                scheduleName, task.job_id, task.operation_id, ...
+                task.load_status, task.from_machine, task.to_machine, ...
+                task.charge);
             continue
         end
 
@@ -182,8 +176,7 @@ function report = check_task_sets_match(baselineTasks, candidateTasks, ...
     report)
 for i = 1:numel(baselineTasks)
     baselineTask = baselineTasks(i);
-    candidateTask = find_task(candidateTasks, ...
-        baselineTask.job_id, baselineTask.operation_id);
+    candidateTask = find_task(candidateTasks, baselineTask);
     if isempty(candidateTask)
         report.errors{end + 1} = sprintf( ...
             'Candidate is missing AGV task job %d operation %d for TD.', ...
@@ -193,8 +186,7 @@ end
 
 for i = 1:numel(candidateTasks)
     candidateTask = candidateTasks(i);
-    baselineTask = find_task(baselineTasks, ...
-        candidateTask.job_id, candidateTask.operation_id);
+    baselineTask = find_task(baselineTasks, candidateTask);
     if isempty(baselineTask)
         report.errors{end + 1} = sprintf( ...
             'Candidate has extra AGV task job %d operation %d for TD.', ...
@@ -203,14 +195,54 @@ for i = 1:numel(candidateTasks)
 end
 end
 
-function task = find_task(tasks, jobId, operationId)
+function task = find_task(tasks, queryTask)
 task = [];
 for i = 1:numel(tasks)
-    if tasks(i).job_id == jobId && tasks(i).operation_id == operationId
+    if same_task(tasks(i), queryTask)
         task = tasks(i);
         return
     end
 end
+end
+
+function tf = same_task(taskA, taskB)
+tf = isequaln(taskA.job_id, taskB.job_id) && ...
+    isequaln(taskA.operation_id, taskB.operation_id) && ...
+    isequaln(taskA.load_status, taskB.load_status) && ...
+    isequaln(taskA.from_machine, taskB.from_machine) && ...
+    isequaln(taskA.to_machine, taskB.to_machine) && ...
+    isequaln(taskA.charge, taskB.charge);
+end
+
+function value = read_task_numeric_field(block, fieldName, defaultValue)
+value = defaultValue;
+if ~isstruct(block) || ~isfield(block, fieldName)
+    return
+end
+
+fieldValue = block.(fieldName);
+if isempty(fieldValue) || ~isnumeric(fieldValue) || ~isscalar(fieldValue) || ...
+        ~isfinite(fieldValue)
+    return
+end
+
+value = fieldValue;
+end
+
+function task = make_agv_task(block, agvIdx, blockIdx, scheduleName)
+task = empty_task_template();
+task.job_id = block.job;
+task.operation_id = block.opera;
+task.load_status = read_task_numeric_field(block, 'load_status', 0);
+task.from_machine = read_task_numeric_field(block, 'from_machine', NaN);
+task.to_machine = read_task_numeric_field(block, 'to_machine', NaN);
+task.charge = read_task_numeric_field(block, 'charge', NaN);
+task.agv_id = agvIdx;
+task.block_index = blockIdx;
+task.start_time = require_scalar_time(block.start, ...
+    scheduleName, agvIdx, blockIdx, 'start');
+task.end_time = require_scalar_time(block.end, ...
+    scheduleName, agvIdx, blockIdx, 'end');
 end
 
 function metrics = empty_metrics()
@@ -241,11 +273,19 @@ report.isFeasible = false;
 end
 
 function tasks = empty_task_array()
-tasks = repmat(struct( ...
+tasks = repmat(empty_task_template(), 1, 0);
+end
+
+function task = empty_task_template()
+task = struct( ...
     'job_id', [], ...
     'operation_id', [], ...
+    'load_status', [], ...
+    'from_machine', [], ...
+    'to_machine', [], ...
+    'charge', [], ...
     'agv_id', [], ...
     'block_index', [], ...
     'start_time', [], ...
-    'end_time', []), 1, 0);
+    'end_time', []);
 end
