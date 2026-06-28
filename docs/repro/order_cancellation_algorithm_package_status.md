@@ -45,6 +45,10 @@
 - `A7.2` / `A9` complete-only diagnostics：
   - `frozen_prefix_infeasible`：`24`
   - `unsupported_processing_state`：`3`
+- `A11.1` multi-source smoke coverage：
+  - `Brandimarte` + `Barnes` + `Dauzere`
+  - `5` 个源数据文件
+  - `auto_selection`：`45/45 feasible`
 
 这些结果说明：当前主流程和诊断链路已经能在小规模 smoke 里稳定运行，并且 complete 侧的拒绝原因可以被追踪到具体分类。
 
@@ -57,6 +61,7 @@
 - `complete_only` 是强制 `complete rescheduling` 分支，可能因为 `frozen prefix` 或 `processing state` 边界被拒绝
 - `complete_only` 失败不代表 `local repair` 回退失败
 - complete rescheduling 的不可用原因现在可以通过 CSV 诊断追踪
+- `A11.1` 进一步扩大了跨源数据 smoke 覆盖面，但仍然属于 small smoke，不代表全量泛化或论文级最终实验
 
 这里的 `complete_only` 失败是对 forced complete rescheduling 分支的拒绝诊断，不是算法整体退化，也不是 local repair 失败。
 
@@ -88,6 +93,7 @@
 
 - 代码规模足够大，且已经按模块形成主线
 - 关键 smoke 和 batch 诊断已经稳定
+- `A11.1` 已把 smoke 覆盖从单一数据源扩展到 `Brandimarte`、`Barnes` 和 `Dauzere`
 - 策略边界清晰，`complete_only` 的失败原因可追踪
 - 后续可以继续围绕统计、文档和更广覆盖的数据集做扩展
 
