@@ -214,6 +214,15 @@ cancel_unstarted_operations_only
 4. `A6.4` `Mk08`–`Mk10`：`27/27 feasible`。
 5. 合计：Brandimarte `Mk01`–`Mk10` small smoke regression，`90/90 feasible`。
 
+`A7.1` strategy smoke comparison：Brandimarte `Mk01`–`Mk03`，`seeds=1:3`，`cancelTimes=[5 9 13]`，`baseline_mode='static_solver'`，`baselinePop=8`，`baselineMaxGen=3`，`baselineSeed=1`，`strategyPolicies={'auto_selection','local_only','complete_only'}`。
+
+1. `auto_selection`：`27/27 feasible`。
+2. `local_only`：`27/27 feasible`。
+3. `complete_only`：`0/27 feasible`，其失败诊断已从 `empty candidate` 展开为 `frozen_prefix_infeasible=24` 和 `unsupported_processing_state=3`。
+4. 这里的 `complete_only` 失败是强制 `complete rescheduling` 分支的拒绝诊断，不代表 `local repair` 回退。
+
+`A7.2` 完成 `complete_only` / `complete_rescheduling` 的诊断汇总修复后，`empty candidate` 不再吞掉 `candidate.report.rejectedReasons/errors` 中的真实原因。
+
 对应提交：`1857553 Preserve started cancellation work`。
 
 ## 6. 仓库结构
@@ -285,5 +294,5 @@ outputs/        生成的输出和日志，不提交 Git
 阶段 M 完成多扰动接口边界说明，明确订单取消与机器故障、AGV 故障的建模边界。
 阶段 N 完成随机订单取消复现包，包含单次 demo、批量实验、CSV 追溯和复现文档。
 阶段 O 完成三策略基线对比入口，支持 auto_selection、local_only、complete_only，并完成 270 行中规模实验、统计脚本和结果说明文档。
-当前结论仅支持订单取消代码原型与 Mk01.fjs 上的阶段性实验结果，不支持全局最优、多数据集泛化或论文级最终结论。
+当前结论仍不支持全局最优、多策略论文级最终结论或全量泛化；但已完成 Brandimarte `Mk01`–`Mk10` 的 small smoke regression。
 ```
