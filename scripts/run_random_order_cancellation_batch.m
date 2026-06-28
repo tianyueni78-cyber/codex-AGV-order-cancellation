@@ -510,8 +510,14 @@ end
 
 if isempty_candidate(candidate)
     status = 'empty_candidate';
-    errorText = summarize_rejection_reason(report, state, cancel, ...
-        selectionStatus, candidateName);
+    if isfield(candidate, 'report') && isstruct(candidate.report)
+        report = candidate.report;
+    end
+    errorText = summarize_candidate_report_diagnostics(report);
+    if isempty(errorText)
+        errorText = summarize_rejection_reason(report, state, cancel, ...
+            selectionStatus, candidateName);
+    end
     if strcmp(errorText, 'unknown')
         errorText = 'empty candidate';
     end
@@ -1735,6 +1741,31 @@ elseif summarize_cancel_state_label(state, cancel) == "processing_at_cancel_time
     errorText = 'canceled order already started';
 elseif summarize_cancel_state_label(state, cancel) == "all_finished"
     errorText = 'canceled order already finished';
+end
+end
+
+function text = summarize_candidate_report_diagnostics(report)
+text = '';
+if ~isstruct(report)
+    return
+end
+
+if is_nonempty_cell_field(report, 'rejectedReasons')
+    text = summarize_first_text(report.rejectedReasons);
+    if ~isempty(text)
+        return
+    end
+end
+
+if is_nonempty_cell_field(report, 'errors')
+    text = summarize_first_text(report.errors);
+    if ~isempty(text)
+        return
+    end
+end
+
+if is_nonempty_cell_field(report, 'warnings')
+    text = summarize_first_text(report.warnings);
 end
 end
 
