@@ -2,7 +2,68 @@
 
 本仓库用于在原 `codex-AGV` 的 FJSP-AGV 正常调度代码基础上，研究订单取消发生后的动态重调度问题。
 
-第一阶段研究范围刻意收窄：从一个已经生成的正常 FJSP-AGV 调度计划出发，在已知时刻取消一个订单，修复或重建剩余订单的计划，并比较效率收益与计划扰动。
+本项目解决的是“订单取消之后，如何在保留已完成/执行中任务的前提下，重新安排剩余订单”的动态调度问题。它不是机器故障修复，也不是新订单插入，而是面向 FJSP-AGV 的订单取消重调度代码包。
+
+## 1. 这个仓库做什么
+
+- 问题：订单取消后的动态重调度，输入是一个已经生成的正常 FJSP-AGV 调度计划和一个 `cancel_time`。
+- 算法：先截取取消时刻状态，再生成局部修复候选和完全重调度候选，最后做可行性校验、指标评价和策略选择。
+- 交付形态：阶段性交付代码包，不是 demo。
+- 主要能力：算法主链路、实验入口、CSV 诊断、失败追踪、数据集覆盖扫描、历史 batch 审计、代码包规模盘点。
+
+## 2. 快速入口
+
+- 主实验入口：[`scripts/run_random_order_cancellation_batch.m`](scripts/run_random_order_cancellation_batch.m)
+- CSV 验证：[`scripts/verify_order_cancellation_batch_csv.m`](scripts/verify_order_cancellation_batch_csv.m)
+- 数据覆盖扫描：[`scripts/scan_order_cancellation_dataset_coverage.m`](scripts/scan_order_cancellation_dataset_coverage.m)
+- 失败样本抽取：[`scripts/extract_order_cancellation_failure_cases.m`](scripts/extract_order_cancellation_failure_cases.m)
+- 历史运行目录审计：[`scripts/catalog_order_cancellation_batch_runs.m`](scripts/catalog_order_cancellation_batch_runs.m)
+- 代码包规模盘点：[`scripts/audit_order_cancellation_package_inventory.m`](scripts/audit_order_cancellation_package_inventory.m)
+- 最终交付说明：[`docs/repro/order_cancellation_final_delivery_summary.md`](docs/repro/order_cancellation_final_delivery_summary.md)
+
+## 3. 怎么运行
+
+从仓库根目录执行 MATLAB 批处理即可。最小 smoke 示例：
+
+```matlab
+matlab -batch "datasets={'raw_code/fjsp/Brandimarte_Data/Mk01.fjs'}; seeds=1:3; cancelTimes=[5 9 13]; baseline_mode='static_solver'; baselinePop=8; baselineMaxGen=3; baselineSeed=1; strategyPolicies={'auto_selection'}; run('scripts/run_random_order_cancellation_batch.m')"
+```
+
+如果你只想先检查已有 batch CSV，可以直接跑 verifier：
+
+```matlab
+matlab -batch "run('scripts/verify_order_cancellation_batch_csv.m')"
+```
+
+## Current Status / 当前状态
+
+当前项目已经形成订单取消动态重调度算法代码包的阶段性交付版本。
+
+这不是 demo，而是包含算法主链路、实验入口、CSV 诊断、失败追踪、数据集覆盖扫描、历史 batch 审计和代码包规模盘点的代码包。
+
+关键摘要如下：
+
+- 代码规模：
+  - `src/cancellation`：`35` 个文件，`7499` 行
+  - order cancellation scripts：`19` 个文件，`8598` 行
+  - `docs/repro`：`7` 个相关文档，`740` 行
+  - total：`61` 个相关文件，`16837` 行
+- 已验证 smoke：
+  - Brandimarte `Mk01`–`Mk10`：`90/90 feasible`
+  - multi-source `auto_selection` 第一组：`45/45 feasible`
+  - multi-source `local_only` 第一组：`45/45 feasible`
+  - multi-source `auto_selection` 第二组：`54/54 feasible`
+  - multi-source `local_only` 第二组：`54/54 feasible`
+- 工程化工具链：
+  - `scripts/verify_order_cancellation_batch_csv.m`
+  - `scripts/scan_order_cancellation_dataset_coverage.m`
+  - `scripts/extract_order_cancellation_failure_cases.m`
+  - `scripts/catalog_order_cancellation_batch_runs.m`
+  - `scripts/audit_order_cancellation_package_inventory.m`
+- 最终说明文档：
+  - [Order Cancellation Code Package Final Delivery Summary](docs/repro/order_cancellation_final_delivery_summary.md)
+
+当前判断是：项目已经达到阶段性交付版本，可以收尾；后续不建议继续修改主算法链路。
 
 ## 1. 问题范围
 
@@ -225,6 +286,50 @@ cancel_unstarted_operations_only
 
 对应提交：`1857553 Preserve started cancellation work`。
 
+### A11：多源数据 smoke 验证矩阵
+
+这一阶段的目标不是扩大算法，而是把订单取消主链路放到更多真实源数据上做 smoke 覆盖，确认跨数据集入口稳定。
+
+已完成的多源 smoke 如下：
+
+1. 第一组 5 个源数据文件：
+   - `raw_code/fjsp/Brandimarte_Data/Mk01.fjs`
+   - `raw_code/fjsp/Barnes/mt10c1.fjs`
+   - `raw_code/fjsp/Barnes/setb4c9.fjs`
+   - `raw_code/fjsp/Dauzere_Data/01a.fjs`
+   - `raw_code/fjsp/Dauzere_Data/09a.fjs`
+   - `A11.1 auto_selection`：`45/45 feasible`
+   - `A11.2 local_only`：`45/45 feasible`
+2. 第二组 6 个源数据文件：
+   - `raw_code/fjsp/Brandimarte_Data/Mk02.fjs`
+   - `raw_code/fjsp/Brandimarte_Data/Mk03.fjs`
+   - `raw_code/fjsp/Barnes/mt10x.fjs`
+   - `raw_code/fjsp/Barnes/seti5x.fjs`
+   - `raw_code/fjsp/Dauzere_Data/02a.fjs`
+   - `raw_code/fjsp/Dauzere_Data/15a.fjs`
+   - `A11.3 auto_selection`：`54/54 feasible`
+   - `A11.4 local_only`：`54/54 feasible`
+
+这几组结果的意义是：`auto_selection` 和 `local_only` 在多源 smoke 下都保持稳定，说明主链路已经不是只在单一数据文件上“碰巧能跑通”。
+
+### A13-A17：工程化工具链
+
+为让这个代码包更像一个可交付的算法工程包，后续又补了几类独立工具脚本：
+
+1. `scripts/verify_order_cancellation_batch_csv.m`：检查 batch CSV 的列、行数、策略分布、可行性和诊断列。
+2. `scripts/scan_order_cancellation_dataset_coverage.m`：扫描 `raw_code/fjsp` 的源数据覆盖面。
+3. `scripts/extract_order_cancellation_failure_cases.m`：抽取失败样本和失败分布。
+4. `scripts/catalog_order_cancellation_batch_runs.m`：审计历史 batch run 目录和每次实验摘要。
+5. `scripts/audit_order_cancellation_package_inventory.m`：盘点订单取消相关代码包规模、文件数和行数。
+
+### A19：最终交付说明
+
+最终收尾文档放在：
+
+- [`docs/repro/order_cancellation_final_delivery_summary.md`](docs/repro/order_cancellation_final_delivery_summary.md)
+
+它把当前交付状态、模块构成、已验证结果、可以放心表述的结论和不能夸大的边界单独整理出来，便于汇报和冻结版本。
+
 ## 6. 仓库结构
 
 ```text
@@ -260,7 +365,12 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 M：多扰动接口边界](docs/00_system_overview/stage_m_multi_disruption_interface_plan.md) | 区分订单取消、机器故障、AGV 故障三类扰动；明确本项目当前只实现订单取消，不实现机器故障、AGV 故障、新订单插入或强化学习。           |
 | [阶段 N：随机订单取消复现包](docs/repro/order_cancellation_repro_guide.md)                     | 随机订单取消 demo、批量实验入口、参数设置、CSV 输出字段、运行方式和复现边界。                                |
 | [阶段 O：策略基线对比结果说明](docs/repro/order_cancellation_strategy_baseline_results.md)      | 记录 `auto_selection`、`local_only`、`complete_only` 三种策略基线的中规模实验结果、统计摘要和结论边界。 |
+| [订单取消输出追踪](docs/repro/order_cancellation_output_traceability.md) | 批量实验输出字段、CSV 路径、结果可追踪性和复现实验的输出约定。 |
+| [订单取消交付清单](docs/repro/order_cancellation_delivery_checklist.md) | 交付检查项、阶段完成项、验收内容和可冻结版本的检查口径。 |
+| [订单取消大规模实验计划](docs/repro/order_cancellation_large_experiment_plan.md) | 大规模实验的计划边界、参数思路和后续验证方向。 |
+| [订单取消大规模实验结果](docs/repro/order_cancellation_large_experiment_results.md) | 大规模实验的结果摘要、统计口径和边界说明。 |
 | [阶段 A10：订单取消算法包状态说明](docs/repro/order_cancellation_algorithm_package_status.md)    | 订单取消动态重调度算法包的代码规模、模块链路、已验证能力、策略边界和后续扩展方向。                        |
+| [阶段 A19：最终交付说明](docs/repro/order_cancellation_final_delivery_summary.md) | 订单取消代码包的阶段性交付结论、代码规模、已验证结果、可写结论和不可夸大结论。 |
 
 | [阶段 G-N 后续路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 从第一版闭环走向更灵活订单取消调度的后续阶段 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 仓库目录和关键文件用途说明 |
@@ -278,22 +388,12 @@ outputs/        生成的输出和日志，不提交 Git
 5. 订单取消代码与机器故障代码保持分离。
 6. 通过 configs、scripts、tests 和 outputs 保证可复现。
 
-## 9. 当前状态
+## 9. 结论边界
 
-当前项目状态：
+当前项目可以明确表述为：
 
-```text
-阶段 A-G 已形成第一版订单取消动态重调度闭环。
-阶段 A 完成源码迁移与基线调用链导读。
-阶段 B 完成订单取消事件与取消时刻状态提取。
-阶段 C 完成删除式局部修复候选。
-阶段 D 完成冻结前缀后的完全重调度候选。
-阶段 E 完成候选评价与策略选择。
-阶段 F 完成小规模实验入口、汇总和项目报告。
-阶段 G 完成场景库生成、场景库实验入口、结果汇总和工作记录。
-阶段 G 已基于 outputs/order_cancellation_scenario_library/20260621_150617/ 形成项目报告。
-阶段 M 完成多扰动接口边界说明，明确订单取消与机器故障、AGV 故障的建模边界。
-阶段 N 完成随机订单取消复现包，包含单次 demo、批量实验、CSV 追溯和复现文档。
-阶段 O 完成三策略基线对比入口，支持 auto_selection、local_only、complete_only，并完成 270 行中规模实验、统计脚本和结果说明文档。
-当前结论仍不支持全局最优、多策略论文级最终结论或全量泛化；但已完成 Brandimarte `Mk01`–`Mk10` 的 small smoke regression。
-```
+- 阶段 A-G 已形成第一版订单取消动态重调度闭环。
+- 阶段 M、N、O 继续把边界、复现和策略对比补齐了。
+- 当前已经具备可复现实验入口、CSV 诊断、失败追踪、数据覆盖扫描、历史 batch 审计和代码包规模盘点。
+- 当前结论仍不支持全局最优、多策略论文级最终结论或全量泛化；但已完成 Brandimarte `Mk01`–`Mk10` 的 small smoke regression。
+- 详情以 [`docs/repro/order_cancellation_final_delivery_summary.md`](docs/repro/order_cancellation_final_delivery_summary.md) 为准。
