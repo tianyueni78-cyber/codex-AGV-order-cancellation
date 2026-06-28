@@ -57,6 +57,10 @@
   - `Brandimarte` + `Barnes` + `Dauzere`
   - `6` 个源数据文件
   - `auto_selection`：`54/54 feasible`
+- `A11.4` second multi-source local_only smoke：
+  - `Brandimarte` + `Barnes` + `Dauzere`
+  - `6` 个源数据文件
+  - `local_only`：`54/54 feasible`
 
 这些结果说明：当前主流程和诊断链路已经能在小规模 smoke 里稳定运行，并且 complete 侧的拒绝原因可以被追踪到具体分类。
 
@@ -72,6 +76,7 @@
 - `A11.1` 进一步扩大了跨源数据 smoke 覆盖面，但仍然属于 small smoke，不代表全量泛化或论文级最终实验
 - 同一组多源数据上，`auto_selection` 和 `local_only` 都达到了 `45/45 feasible`，这增强了 `local repair` 分支的 smoke 证据，但仍不代表全量泛化或论文级最终实验
 - `A11.3` 进一步扩大了跨源、多实例 smoke 覆盖面，但仍然属于 small smoke，不代表全量泛化或论文级最终实验
+- 第二组多源数据上，`auto_selection` 和 `local_only` 都达到了 `54/54 feasible`，这进一步增强了 `local repair` / `auto_selection` 主链路的 smoke 证据，但仍不代表全量泛化或论文级最终实验
 
 这里的 `complete_only` 失败是对 forced complete rescheduling 分支的拒绝诊断，不是算法整体退化，也不是 local repair 失败。
 
@@ -106,6 +111,7 @@
 - `A11.1` 已把 smoke 覆盖从单一数据源扩展到 `Brandimarte`、`Barnes` 和 `Dauzere`
 - `A11.2` 进一步确认了同一组多源数据上的 `local_only` 也为 `45/45 feasible`
 - `A11.3` 再次确认了第二组多源数据上的 `auto_selection` 也为 `54/54 feasible`
+- `A11.4` 进一步确认了第二组多源数据上的 `local_only` 也为 `54/54 feasible`
 - 策略边界清晰，`complete_only` 的失败原因可追踪
 - 后续可以继续围绕统计、文档和更广覆盖的数据集做扩展
 
