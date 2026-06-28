@@ -260,6 +260,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 M：多扰动接口边界](docs/00_system_overview/stage_m_multi_disruption_interface_plan.md) | 区分订单取消、机器故障、AGV 故障三类扰动；明确本项目当前只实现订单取消，不实现机器故障、AGV 故障、新订单插入或强化学习。           |
 | [阶段 N：随机订单取消复现包](docs/repro/order_cancellation_repro_guide.md)                     | 随机订单取消 demo、批量实验入口、参数设置、CSV 输出字段、运行方式和复现边界。                                |
 | [阶段 O：策略基线对比结果说明](docs/repro/order_cancellation_strategy_baseline_results.md)      | 记录 `auto_selection`、`local_only`、`complete_only` 三种策略基线的中规模实验结果、统计摘要和结论边界。 |
+| [阶段 A10：订单取消算法包状态说明](docs/repro/order_cancellation_algorithm_package_status.md)    | 订单取消动态重调度算法包的代码规模、模块链路、已验证能力、策略边界和后续扩展方向。                        |
 
 | [阶段 G-N 后续路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 从第一版闭环走向更灵活订单取消调度的后续阶段 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 仓库目录和关键文件用途说明 |
