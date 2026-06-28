@@ -195,6 +195,19 @@ cancel_unstarted_operations_only
 2. 每个场景均通过调度约束检查。
 3. 多随机种子汇总后再形成研究结论。
 
+### A5：已完成的 cancellation 语义
+
+当前 local repair 已支持：
+
+1. completed machine / AGV task：保留为历史记录。
+2. frozen/processing machine / AGV task：保留为已开始或执行中的承诺任务。
+3. unstarted machine / AGV task：删除。
+4. unknown：保守诊断，不强删。
+5. residual checker 仅把 unstarted / unknown 当作非法残留。
+
+验证结果：`Mk01` small regression 在 `seeds=1:5`、`cancelTimes=[5 9 13]`、`strategyPolicies={'auto_selection'}` 下达到 `15/15 feasible`。
+对应提交：`1857553 Preserve started cancellation work`。
+
 ## 6. 仓库结构
 
 ```text
@@ -266,4 +279,3 @@ outputs/        生成的输出和日志，不提交 Git
 阶段 O 完成三策略基线对比入口，支持 auto_selection、local_only、complete_only，并完成 270 行中规模实验、统计脚本和结果说明文档。
 当前结论仅支持订单取消代码原型与 Mk01.fjs 上的阶段性实验结果，不支持全局最优、多数据集泛化或论文级最终结论。
 ```
-
