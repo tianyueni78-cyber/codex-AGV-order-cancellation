@@ -206,6 +206,7 @@ cancel_unstarted_operations_only
 5. residual checker 仅把 unstarted / unknown 当作非法残留。
 
 验证结果：`Mk01` small regression 在 `seeds=1:5`、`cancelTimes=[5 9 13]`、`strategyPolicies={'auto_selection'}` 下达到 `15/15 feasible`。
+`A6.1` smoke regression：Brandimarte `Mk01`–`Mk03`，`seeds=1:3`，`cancelTimes=[5 9 13]`，`auto_selection`，`27/27 feasible`。
 对应提交：`1857553 Preserve started cancellation work`。
 
 ## 6. 仓库结构
