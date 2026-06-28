@@ -1,5 +1,5 @@
 function candidate = remove_cancelled_machine_operations(problem, schedule, state, cancel)
-%REMOVE_CANCELLED_MACHINE_OPERATIONS Remove unstarted cancelled operations.
+%REMOVE_CANCELLED_MACHINE_OPERATIONS Remove unstarted cancelled machine operations.
 %   candidate = REMOVE_CANCELLED_MACHINE_OPERATIONS(problem, schedule, state,
 %   cancel) removes only unstarted machine operations for the cancelled job.
 %   It does not move remaining operations or touch AGV tasks.
@@ -29,19 +29,24 @@ end
 
 candidate.machineTable = schedule.machineTable;
 candidate.AGVTable = schedule.AGVTable;
-operationsToRemove = select_removable_operations( ...
+[candidate.machineTable, candidate.removed_operations, ...
+    candidate.frozen_operations, candidate.unknown_operations, ...
+    candidate.completed_operation_count] = prune_cancelled_machine_table( ...
     candidate.machineTable, cancel);
-
-for i = 1:numel(operationsToRemove)
-    operation = operationsToRemove(i);
-    candidate.machineTable{operation.machine_id}(operation.block_index) = [];
-    candidate.removed_operations(end + 1) = operation;
-end
-
-candidate.machineTable = prune_job_from_machine_table( ...
-    candidate.machineTable, cancel.job_id);
 candidate.report.removedOperationCount = ...
     numel(candidate.removed_operations);
+candidate.report.removedUnstartedOperationCount = ...
+    numel(candidate.removed_operations);
+candidate.report.remainingUnstartedOperationCount = ...
+    count_remaining_unstarted_machine_operations(candidate.machineTable, ...
+    cancel);
+candidate.report.completedOperationCount = ...
+    candidate.completed_operation_count;
+candidate.report.frozenProcessingOperationCount = ...
+    numel(candidate.frozen_operations);
+candidate.report.frozenProcessingOperations = candidate.frozen_operations;
+candidate.report.unknownOperationCount = numel(candidate.unknown_operations);
+candidate.report.unknownOperations = candidate.unknown_operations;
 candidate.isFeasible = true;
 end
 
@@ -85,11 +90,6 @@ if ~strcmp(cancel.policy, 'cancel_unstarted_operations_only')
         'Only cancel_unstarted_operations_only is supported.';
 end
 
-if state.has_unsupported_operations
-    report.rejectedReasons{end + 1} = ...
-        'Cancelled job has processing machine operations.';
-end
-
 if state.cancel.job_id ~= cancel.job_id
     report.rejectedReasons{end + 1} = ...
         'state.cancel.job_id does not match cancel.job_id.';
@@ -101,12 +101,73 @@ if state.cancel.cancel_time ~= cancel.cancel_time
 end
 end
 
-function operationsToRemove = select_removable_operations(machineTable, cancel)
-operationsToRemove = empty_operation_array();
+function [machineTable, removedOperations, frozenOperations, ...
+    unknownOperations, completedOperationCount] = prune_cancelled_machine_table( ...
+    machineTable, cancel)
+removedOperations = empty_operation_array();
+frozenOperations = empty_operation_array();
+unknownOperations = empty_operation_array();
+completedOperationCount = 0;
+
+if ~iscell(machineTable)
+    return
+end
 
 for machineIdx = 1:numel(machineTable)
     blocks = machineTable{machineIdx};
-    if isempty(blocks)
+    if isempty(blocks) || ~isstruct(blocks)
+        continue
+    end
+
+    keptBlocks = blocks([]);
+    for blockIdx = 1:numel(blocks)
+        block = blocks(blockIdx);
+        if ~isfield(block, 'job') || block.job ~= cancel.job_id
+            keptBlocks(end + 1) = block;
+            continue
+        end
+
+        operation = struct();
+        operation.job_id = read_optional_block_value(block, 'job');
+        operation.operation_id = read_optional_block_value(block, 'opera');
+        operation.machine_id = machineIdx;
+        operation.block_index = blockIdx;
+        operation.start_time = read_optional_block_value(block, 'start');
+        operation.end_time = read_optional_block_value(block, 'end');
+        operation.status = '';
+
+        bucket = classify_cancelled_machine_operation(block, cancel);
+        if strcmp(bucket, 'unstarted')
+            removedOperations(end + 1) = operation;
+        elseif strcmp(bucket, 'processing')
+            keptBlocks(end + 1) = block;
+            frozenOperations(end + 1) = operation;
+        elseif strcmp(bucket, 'completed')
+            keptBlocks(end + 1) = block;
+            completedOperationCount = completedOperationCount + 1;
+        else
+            keptBlocks(end + 1) = block;
+            unknownOperations(end + 1) = operation;
+        end
+    end
+    machineTable{machineIdx} = keptBlocks;
+end
+
+removedOperations = sort_operations_for_deletion(removedOperations);
+frozenOperations = sort_operations_for_deletion(frozenOperations);
+unknownOperations = sort_operations_for_deletion(unknownOperations);
+end
+
+function count = count_remaining_unstarted_machine_operations(machineTable, ...
+    cancel)
+count = 0;
+if ~iscell(machineTable)
+    return
+end
+
+for machineIdx = 1:numel(machineTable)
+    blocks = machineTable{machineIdx};
+    if isempty(blocks) || ~isstruct(blocks)
         continue
     end
 
@@ -116,37 +177,51 @@ for machineIdx = 1:numel(machineTable)
             continue
         end
 
-        operation = struct();
-        operation.job_id = block.job;
-        operation.operation_id = block.opera;
-        operation.machine_id = machineIdx;
-        operation.block_index = blockIdx;
-        operation.start_time = block.start;
-        operation.end_time = block.end;
-        operation.status = '';
-        operationsToRemove(end + 1) = operation;
-    end
-end
+        startTime = read_optional_block_value(block, 'start');
+        endTime = read_optional_block_value(block, 'end');
+        if isempty(startTime) || isempty(endTime)
+            continue
+        end
 
-operationsToRemove = sort_operations_for_deletion(operationsToRemove);
-end
-
-function machineTable = prune_job_from_machine_table(machineTable, jobId)
-for machineIdx = 1:numel(machineTable)
-    blocks = machineTable{machineIdx};
-    if isempty(blocks) || ~isstruct(blocks)
-        continue
-    end
-
-    keep = true(1, numel(blocks));
-    for blockIdx = 1:numel(blocks)
-        block = blocks(blockIdx);
-        if isfield(block, 'job') && block.job == jobId
-            keep(blockIdx) = false;
+        if startTime > cancel.cancel_time
+            count = count + 1;
         end
     end
-    machineTable{machineIdx} = blocks(keep);
 end
+end
+
+function bucket = classify_cancelled_machine_operation(block, cancel)
+bucket = 'unknown';
+if ~isstruct(cancel) || ~isfield(cancel, 'cancel_time') || ...
+        ~isnumeric(cancel.cancel_time) || ~isscalar(cancel.cancel_time)
+    return
+end
+
+startTime = read_optional_block_value(block, 'start');
+endTime = read_optional_block_value(block, 'end');
+if isempty(startTime) || isempty(endTime)
+    return
+end
+
+if endTime <= cancel.cancel_time
+    bucket = 'completed';
+elseif startTime <= cancel.cancel_time && cancel.cancel_time < endTime
+    bucket = 'processing';
+elseif startTime > cancel.cancel_time
+    bucket = 'unstarted';
+end
+end
+
+function value = read_optional_block_value(block, fieldName)
+value = [];
+if ~isstruct(block) || ~isfield(block, fieldName)
+    return
+end
+fieldValue = block.(fieldName);
+if ~isnumeric(fieldValue) || ~isscalar(fieldValue) || ~isfinite(fieldValue)
+    return
+end
+value = fieldValue;
 end
 
 function operations = sort_operations_for_deletion(operations)

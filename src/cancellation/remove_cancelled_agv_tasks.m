@@ -27,20 +27,24 @@ if ~isempty(candidate.report.rejectedReasons) || ...
     return
 end
 
-[agvTasksToRemove, frozenProcessingAgvTasks] = ...
-    select_removable_agv_tasks(candidate.AGVTable, cancel);
+[candidate.AGVTable, agvTasksToRemove, frozenProcessingAgvTasks, ...
+    unknownAgvTasks, completedAgvTaskCount] = prune_cancelled_agv_table( ...
+    candidate.AGVTable, cancel);
 
-for i = 1:numel(agvTasksToRemove)
-    agvTask = agvTasksToRemove(i);
-    candidate.AGVTable{agvTask.agv_id}(agvTask.block_index) = [];
-    candidate.removed_agv_tasks(end + 1) = agvTask;
-end
+candidate.removed_agv_tasks = agvTasksToRemove;
 
 candidate.report.removedAgvTaskCount = ...
     numel(candidate.removed_agv_tasks);
+candidate.report.removedUnstartedAgvTaskCount = ...
+    numel(candidate.removed_agv_tasks);
+candidate.report.remainingUnstartedAgvTaskCount = ...
+    count_remaining_unstarted_agv_tasks(candidate.AGVTable, cancel);
+candidate.report.completedAgvTaskCount = completedAgvTaskCount;
 candidate.report.frozenProcessingAgvTaskCount = ...
     numel(frozenProcessingAgvTasks);
 candidate.report.frozenProcessingAgvTasks = frozenProcessingAgvTasks;
+candidate.report.unknownAgvTaskCount = numel(unknownAgvTasks);
+candidate.report.unknownAgvTasks = unknownAgvTasks;
 candidate.isFeasible = true;
 end
 
@@ -84,11 +88,6 @@ if ~strcmp(cancel.policy, 'cancel_unstarted_operations_only')
         'Only cancel_unstarted_operations_only is supported.';
 end
 
-if state.has_unsupported_operations
-    report.rejectedReasons{end + 1} = ...
-        'Cancelled job has processing machine operations.';
-end
-
 if state.cancel.job_id ~= cancel.job_id
     report.rejectedReasons{end + 1} = ...
         'state.cancel.job_id does not match cancel.job_id.';
@@ -100,10 +99,13 @@ if state.cancel.cancel_time ~= cancel.cancel_time
 end
 end
 
-function [agvTasksToRemove, frozenProcessingAgvTasks] = ...
-    select_removable_agv_tasks(AGVTable, cancel)
+function [AGVTable, agvTasksToRemove, frozenProcessingAgvTasks, ...
+    unknownAgvTasks, completedAgvTaskCount] = prune_cancelled_agv_table( ...
+    AGVTable, cancel)
 agvTasksToRemove = empty_agv_task_array();
 frozenProcessingAgvTasks = empty_agv_task_array();
+unknownAgvTasks = empty_agv_task_array();
+completedAgvTaskCount = 0;
 
 for agvIdx = 1:numel(AGVTable)
     blocks = AGVTable{agvIdx};
@@ -111,36 +113,124 @@ for agvIdx = 1:numel(AGVTable)
         continue
     end
 
+    keptBlocks = blocks([]);
     for blockIdx = 1:numel(blocks)
         block = blocks(blockIdx);
         if ~isfield(block, 'job') || block.job ~= cancel.job_id
+            keptBlocks(end + 1) = block;
             continue
         end
 
         agvTask = struct();
-        agvTask.job_id = block.job;
-        agvTask.operation_id = block.opera;
+        agvTask.job_id = read_optional_block_value(block, 'job');
+        agvTask.operation_id = read_optional_block_value(block, 'opera');
         agvTask.agv_id = agvIdx;
         agvTask.block_index = blockIdx;
-        agvTask.start_time = block.start;
-        agvTask.end_time = block.end;
-        agvTask.from_machine = block.from_machine;
-        agvTask.to_machine = block.to_machine;
+        agvTask.start_time = read_optional_block_value(block, 'start');
+        agvTask.end_time = read_optional_block_value(block, 'end');
+        agvTask.from_machine = read_optional_block_value( ...
+            block, 'from_machine');
+        agvTask.to_machine = read_optional_block_value(block, 'to_machine');
         agvTask.status = '';
-        agvTask.load_status = [];
-        agvTask.charge = [];
-        if block.start > cancel.cancel_time
+        agvTask.load_status = read_optional_block_value(block, 'load_status');
+        agvTask.charge = read_optional_block_value(block, 'charge');
+        [bucket, agvTask] = classify_cancelled_agv_task(block, agvTask, ...
+            cancel);
+        if strcmp(bucket, 'unstarted')
             agvTasksToRemove(end + 1) = agvTask;
-        elseif block.start <= cancel.cancel_time && ...
-                cancel.cancel_time < block.end
+        elseif strcmp(bucket, 'frozen')
+            keptBlocks(end + 1) = block;
             frozenProcessingAgvTasks(end + 1) = agvTask;
+        elseif strcmp(bucket, 'completed')
+            keptBlocks(end + 1) = block;
+            completedAgvTaskCount = completedAgvTaskCount + 1;
+        elseif strcmp(bucket, 'unknown')
+            keptBlocks(end + 1) = block;
+            unknownAgvTasks(end + 1) = agvTask;
         end
     end
+    AGVTable{agvIdx} = keptBlocks;
 end
 
 agvTasksToRemove = sort_agv_tasks_for_deletion(agvTasksToRemove);
 frozenProcessingAgvTasks = sort_agv_tasks_for_deletion( ...
     frozenProcessingAgvTasks);
+unknownAgvTasks = sort_agv_tasks_for_deletion(unknownAgvTasks);
+end
+
+function count = count_remaining_unstarted_agv_tasks(AGVTable, cancel)
+count = 0;
+if ~iscell(AGVTable)
+    return
+end
+
+for agvIdx = 1:numel(AGVTable)
+    blocks = AGVTable{agvIdx};
+    if isempty(blocks) || ~isstruct(blocks)
+        continue
+    end
+    for blockIdx = 1:numel(blocks)
+        block = blocks(blockIdx);
+        if ~isfield(block, 'job') || block.job ~= cancel.job_id
+            continue
+        end
+        startTime = read_scalar_time(block, 'start');
+        endTime = read_scalar_time(block, 'end');
+        if isempty(startTime) || isempty(endTime)
+            continue
+        end
+        if startTime > cancel.cancel_time
+            count = count + 1;
+        end
+    end
+end
+end
+
+function [bucket, agvTask] = classify_cancelled_agv_task(block, agvTask, ...
+    cancel)
+bucket = 'unknown';
+if ~isfield(cancel, 'cancel_time') || ~isnumeric(cancel.cancel_time) || ...
+        ~isscalar(cancel.cancel_time)
+    return
+end
+
+startTime = read_scalar_time(block, 'start');
+endTime = read_scalar_time(block, 'end');
+if isempty(startTime) || isempty(endTime)
+    return
+end
+
+agvTask.start_time = startTime;
+agvTask.end_time = endTime;
+if endTime <= cancel.cancel_time
+    bucket = 'completed';
+elseif startTime <= cancel.cancel_time && cancel.cancel_time < endTime
+    bucket = 'frozen';
+elseif startTime > cancel.cancel_time
+    bucket = 'unstarted';
+end
+end
+
+function value = read_optional_block_value(block, fieldName)
+value = [];
+if ~isstruct(block) || ~isfield(block, fieldName)
+    return
+end
+value = block.(fieldName);
+end
+
+function value = read_scalar_time(block, fieldName)
+value = [];
+if ~isstruct(block) || ~isfield(block, fieldName)
+    return
+end
+
+fieldValue = block.(fieldName);
+if ~isnumeric(fieldValue) || ~isscalar(fieldValue) || ~isfinite(fieldValue)
+    return
+end
+
+value = fieldValue;
 end
 
 function agvTasks = sort_agv_tasks_for_deletion(agvTasks)

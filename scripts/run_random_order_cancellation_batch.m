@@ -928,12 +928,30 @@ sources = {};
 if isstruct(selectionStatus) && isfield(selectionStatus, 'rejectedReasons')
     sources{end + 1} = selectionStatus.rejectedReasons;
 end
+if isstruct(selectionStatus) && isfield(selectionStatus, 'errors')
+    sources{end + 1} = selectionStatus.errors;
+end
+if isstruct(selectionStatus) && isfield(selectionStatus, 'warnings')
+    sources{end + 1} = selectionStatus.warnings;
+end
 if isstruct(report)
+    if isfield(report, 'machineConflictCheck')
+        sources{end + 1} = report.machineConflictCheck;
+    end
+    if isfield(report, 'agvConflictCheck')
+        sources{end + 1} = report.agvConflictCheck;
+    end
+    if isfield(report, 'jobSequenceCheck')
+        sources{end + 1} = report.jobSequenceCheck;
+    end
     if isfield(report, 'rejectedReasons')
         sources{end + 1} = report.rejectedReasons;
     end
     if isfield(report, 'errors')
         sources{end + 1} = report.errors;
+    end
+    if isfield(report, 'warnings')
+        sources{end + 1} = report.warnings;
     end
 end
 if isstruct(evaluation) && isfield(evaluation, 'report') && ...
@@ -943,6 +961,9 @@ if isstruct(evaluation) && isfield(evaluation, 'report') && ...
     end
     if isfield(evaluation.report, 'errors')
         sources{end + 1} = evaluation.report.errors;
+    end
+    if isfield(evaluation.report, 'warnings')
+        sources{end + 1} = evaluation.report.warnings;
     end
 end
 
@@ -968,7 +989,7 @@ end
 
 if isstruct(value)
     priorityFields = {'reason', 'message', 'type', 'id', 'errors', ...
-        'rejectedReasons', 'report'};
+        'warnings', 'rejectedReasons', 'report'};
     for i = 1:numel(priorityFields)
         fieldName = priorityFields{i};
         if isfield(value, fieldName)
@@ -997,7 +1018,9 @@ if ischar(value)
     end
     genericReasons = {'invalid_candidate', 'invalid_evaluation', ...
         'candidate_infeasible', 'evaluation_infeasible', 'missing_y', ...
-        'unknown validation failure'};
+        'unknown validation failure', ...
+        'candidate not added to feasible pool', ...
+        'validation report empty'};
     if any(strcmpi(strtrim(lower(text)), genericReasons))
         return
     end
@@ -1025,6 +1048,19 @@ end
 if isfield(checkReport, 'errors') && iscell(checkReport.errors) && ...
         ~isempty(checkReport.errors)
     reason = classify_message_list(checkReport.errors, fieldName);
+    if strcmp(reason, 'unknown validation failure')
+        reason = overlapText;
+    end
+elseif isfield(checkReport, 'warnings') && iscell(checkReport.warnings) && ...
+        ~isempty(checkReport.warnings)
+    reason = classify_message_list(checkReport.warnings, fieldName);
+    if strcmp(reason, 'unknown validation failure')
+        reason = overlapText;
+    end
+elseif isfield(checkReport, 'rejectedReasons') && ...
+        iscell(checkReport.rejectedReasons) && ...
+        ~isempty(checkReport.rejectedReasons)
+    reason = classify_message_list(checkReport.rejectedReasons, fieldName);
     if strcmp(reason, 'unknown validation failure')
         reason = overlapText;
     end
@@ -1137,6 +1173,13 @@ end
 machineReason = summarize_check_gate_failure(report, 'machineConflictCheck', ...
     'machine overlap');
 if ~isempty(machineReason)
+    fallbackReason = extract_first_validation_reason(selectionStatus, report, ...
+        evaluation);
+    if contains(machineReason, 'validation report empty') && ...
+            ~isempty(fallbackReason)
+        reason = fallbackReason;
+        return
+    end
     reason = machineReason;
     return
 end
@@ -1150,6 +1193,13 @@ end
 agvReason = summarize_check_gate_failure(report, 'agvConflictCheck', ...
     'agv overlap');
 if ~isempty(agvReason)
+    fallbackReason = extract_first_validation_reason(selectionStatus, report, ...
+        evaluation);
+    if contains(agvReason, 'validation report empty') && ...
+            ~isempty(fallbackReason)
+        reason = fallbackReason;
+        return
+    end
     reason = agvReason;
     return
 end
@@ -1157,7 +1207,21 @@ end
 sequenceReason = summarize_check_gate_failure(report, 'jobSequenceCheck', ...
     'precedence violation');
 if ~isempty(sequenceReason)
+    fallbackReason = extract_first_validation_reason(selectionStatus, report, ...
+        evaluation);
+    if contains(sequenceReason, 'validation report empty') && ...
+            ~isempty(fallbackReason)
+        reason = fallbackReason;
+        return
+    end
     reason = sequenceReason;
+    return
+end
+
+fallbackReason = extract_first_validation_reason(selectionStatus, report, ...
+    evaluation);
+if ~isempty(fallbackReason)
+    reason = fallbackReason;
     return
 end
 
@@ -1383,6 +1447,10 @@ if isstruct(selection) && isfield(selection, 'candidates') && ...
         parts{end + 1} = ['reason_fields=', summarize_value_fields(status, ...
             {'reason', 'message', 'type', 'id', 'status', ...
             'rejectedReasons', 'errors'})];
+        parts{end + 1} = ['selection_localRepair_rejectedReasons_full=', ...
+            summarize_full_value_field(status, 'rejectedReasons')];
+        parts{end + 1} = ['selection_localRepair_errors_full=', ...
+            summarize_full_value_field(status, 'errors')];
     else
         parts{end + 1} = ['no ', selectionFieldName, ...
             ' candidate in selection'];
@@ -1390,6 +1458,7 @@ if isstruct(selection) && isfield(selection, 'candidates') && ...
 else
     parts{end + 1} = 'no selection candidates';
 end
+parts{end + 1} = ['selection_first_reason=', summarize_first_text(selection)];
 
 if isstruct(candidate)
     parts{end + 1} = ['candidate_fields=', summarize_field_names(candidate)];
@@ -1397,6 +1466,12 @@ if isstruct(candidate)
         parts{end + 1} = ['report_fields=', summarize_field_names(candidate.report)];
         parts{end + 1} = ['report_check_statuses=', ...
             summarize_report_check_statuses(candidate.report)];
+        parts{end + 1} = ['report_first_reason=', ...
+            summarize_first_text(candidate.report)];
+        parts{end + 1} = ['candidate_report_rejectedReasons_full=', ...
+            summarize_full_value_field(candidate.report, 'rejectedReasons')];
+        parts{end + 1} = ['candidate_report_errors_full=', ...
+            summarize_full_value_field(candidate.report, 'errors')];
     else
         parts{end + 1} = 'no candidate report';
     end
@@ -1409,6 +1484,12 @@ if isstruct(evaluation)
     if isfield(evaluation, 'report') && isstruct(evaluation.report)
         parts{end + 1} = ['evaluation_report_fields=', ...
             summarize_field_names(evaluation.report)];
+        parts{end + 1} = ['evaluation_first_reason=', ...
+            summarize_first_text(evaluation.report)];
+        parts{end + 1} = ['evaluation_report_errors_full=', ...
+            summarize_full_value_field(evaluation.report, 'errors')];
+        parts{end + 1} = ['evaluation_report_rejectedReasons_full=', ...
+            summarize_full_value_field(evaluation.report, 'rejectedReasons')];
     else
         parts{end + 1} = 'no evaluation report';
     end
@@ -1477,7 +1558,11 @@ for i = 1:numel(fieldNames)
     if ~isfield(s, fieldName)
         continue
     end
-    valueText = summarize_short_value(s.(fieldName));
+    if contains(lower(fieldName), 'reason') || contains(lower(fieldName), 'error')
+        valueText = summarize_full_value(s.(fieldName));
+    else
+        valueText = summarize_short_value(s.(fieldName));
+    end
     if ~isempty(valueText)
         parts{end + 1} = [fieldName, '=', valueText];
     end
@@ -1509,6 +1594,88 @@ elseif isstruct(value)
 end
 end
 
+function text = summarize_full_value_field(s, fieldName)
+text = '';
+if ~isstruct(s) || ~isfield(s, fieldName)
+    return
+end
+text = summarize_full_value(s.(fieldName));
+end
+
+function text = summarize_full_value(value)
+text = '';
+if iscell(value)
+    parts = {};
+    for i = 1:numel(value)
+        itemText = summarize_full_value(value{i});
+        if ~isempty(itemText)
+            parts{end + 1} = itemText;
+        end
+    end
+    if ~isempty(parts)
+        text = strjoin(parts, ' | ');
+    end
+    return
+end
+
+if isstruct(value)
+    priorityFields = {'reason', 'message', 'type', 'id', 'status', ...
+        'errors', 'warnings', 'rejectedReasons', 'report'};
+    for i = 1:numel(priorityFields)
+        fieldName = priorityFields{i};
+        if isfield(value, fieldName)
+            text = summarize_full_value(value.(fieldName));
+            if ~isempty(text)
+                return
+            end
+        end
+    end
+    fieldNames = fieldnames(value);
+    for i = 1:numel(fieldNames)
+        fieldName = fieldNames{i};
+        if any(strcmp(fieldName, priorityFields))
+            continue
+        end
+        text = summarize_full_value(value.(fieldName));
+        if ~isempty(text)
+            return
+        end
+    end
+    return
+end
+
+if isstring(value)
+    if isscalar(value)
+        text = summarize_full_value(char(value));
+    elseif ~isempty(value)
+        text = summarize_full_value(char(value(1)));
+    end
+    return
+end
+
+if ischar(value)
+    text = strtrim(regexprep(char(string(value)), '[\r\n]+', ' '));
+    if numel(text) > 500
+        text = [text(1:497), '...'];
+    end
+    return
+end
+
+if isnumeric(value) || islogical(value)
+    if isscalar(value) && isfinite(value)
+        text = strtrim(num2str(value));
+    end
+end
+end
+
+function text = summarize_first_text(value)
+text = '';
+reason = first_meaningful_text(value);
+if ~isempty(reason)
+    text = shorten_validation_text(reason);
+end
+end
+
 function text = join_preview_names(names, maxCount)
 if isempty(names)
     text = 'none';
@@ -1524,8 +1691,8 @@ end
 
 function text = truncate_probe_text(text)
 text = strtrim(regexprep(char(string(text)), '[\r\n]+', ' '));
-if numel(text) > 200
-    text = [text(1:197), '...'];
+if numel(text) > 1500
+    text = [text(1:1497), '...'];
 end
 end
 
@@ -1713,18 +1880,27 @@ if ~isstruct(candidate) || ~isstruct(cancel) || ~isfield(cancel, 'job_id')
     return
 end
 
-[machineCount, machinePreview] = summarize_job_residual_in_table( ...
-    candidate, 'machineTable', cancel.job_id, 'machine');
-[agvCount, agvPreview] = summarize_job_residual_in_table( ...
-    candidate, 'AGVTable', cancel.job_id, 'agv');
+[machineCount, machinePreview, machineStats] = ...
+    summarize_machine_residual_in_table(candidate, cancel);
+[agvCount, agvPreview, agvStats] = summarize_agv_residual_in_table( ...
+    candidate, cancel);
 
-if machineCount == 0 && agvCount == 0
+if machineStats.unstarted == 0 && machineStats.unknown == 0 && ...
+        agvStats.unstarted == 0 && agvStats.unknown == 0
     return
 end
 
 parts = {};
 parts{end + 1} = ['machine_count=', num2str(machineCount)];
+parts{end + 1} = ['machine_completed=', num2str(machineStats.completed)];
+parts{end + 1} = ['machine_frozen=', num2str(machineStats.frozen)];
+parts{end + 1} = ['machine_unstarted=', num2str(machineStats.unstarted)];
+parts{end + 1} = ['machine_unknown=', num2str(machineStats.unknown)];
 parts{end + 1} = ['agv_count=', num2str(agvCount)];
+parts{end + 1} = ['agv_completed=', num2str(agvStats.completed)];
+parts{end + 1} = ['agv_frozen=', num2str(agvStats.frozen)];
+parts{end + 1} = ['agv_unstarted=', num2str(agvStats.unstarted)];
+parts{end + 1} = ['agv_unknown=', num2str(agvStats.unknown)];
 if ~isempty(machinePreview)
     parts{end + 1} = ['machine_first=', machinePreview];
 end
@@ -1734,15 +1910,19 @@ end
 summary = strjoin(parts, ', ');
 end
 
-function [count, preview] = summarize_job_residual_in_table( ...
-    candidate, fieldName, jobId, resourceLabel)
+function [count, preview, stats] = summarize_machine_residual_in_table( ...
+    candidate, cancel)
 count = 0;
 preview = '';
-if ~isfield(candidate, fieldName) || ~iscell(candidate.(fieldName))
+stats = struct('completed', 0, 'frozen', 0, 'unstarted', 0, 'unknown', 0);
+if ~isfield(candidate, 'machineTable') || ~iscell(candidate.machineTable)
+    return
+end
+if ~isstruct(cancel) || ~isfield(cancel, 'job_id')
     return
 end
 
-tableValue = candidate.(fieldName);
+tableValue = candidate.machineTable;
 for outerIdx = 1:numel(tableValue)
     rows = tableValue{outerIdx};
     if isempty(rows) || ~isstruct(rows)
@@ -1750,15 +1930,90 @@ for outerIdx = 1:numel(tableValue)
     end
     for rowIdx = 1:numel(rows)
         row = rows(rowIdx);
-        if ~isfield(row, 'job') || row.job ~= jobId
+        if ~isfield(row, 'job') || row.job ~= cancel.job_id
             continue
         end
         count = count + 1;
+        bucket = classify_residual_machine_task(row, cancel);
+        stats.(bucket) = stats.(bucket) + 1;
         if isempty(preview)
-            preview = summarize_residual_row(row, resourceLabel, outerIdx, ...
+            preview = summarize_residual_row(row, 'machine', outerIdx, ...
                 rowIdx);
         end
     end
+end
+end
+
+function [count, preview, stats] = summarize_agv_residual_in_table( ...
+    candidate, cancel)
+count = 0;
+preview = '';
+stats = struct('completed', 0, 'frozen', 0, 'unstarted', 0, 'unknown', 0);
+if ~isfield(candidate, 'AGVTable') || ~iscell(candidate.AGVTable)
+    return
+end
+if ~isstruct(cancel) || ~isfield(cancel, 'job_id')
+    return
+end
+
+tableValue = candidate.AGVTable;
+for outerIdx = 1:numel(tableValue)
+    rows = tableValue{outerIdx};
+    if isempty(rows) || ~isstruct(rows)
+        continue
+    end
+    for rowIdx = 1:numel(rows)
+        row = rows(rowIdx);
+        if ~isfield(row, 'job') || row.job ~= cancel.job_id
+            continue
+        end
+        count = count + 1;
+        bucket = classify_residual_agv_task(row, cancel);
+        stats.(bucket) = stats.(bucket) + 1;
+        if isempty(preview)
+            preview = summarize_residual_row(row, 'agv', outerIdx, rowIdx);
+        end
+    end
+end
+end
+
+function bucket = classify_residual_agv_task(row, cancel)
+bucket = 'unknown';
+if ~isfield(cancel, 'cancel_time') || ~isnumeric(cancel.cancel_time) || ...
+        ~isscalar(cancel.cancel_time)
+    return
+end
+if ~isfield(row, 'start') || ~isfield(row, 'end') || ...
+        ~isnumeric(row.start) || ~isscalar(row.start) || ...
+        ~isnumeric(row.end) || ~isscalar(row.end)
+    return
+end
+if row.end <= cancel.cancel_time
+    bucket = 'completed';
+elseif row.start <= cancel.cancel_time && cancel.cancel_time < row.end
+    bucket = 'frozen';
+elseif row.start > cancel.cancel_time
+    bucket = 'unstarted';
+end
+end
+
+function bucket = classify_residual_machine_task(row, cancel)
+bucket = 'unknown';
+if ~isfield(cancel, 'cancel_time') || ~isnumeric(cancel.cancel_time) || ...
+        ~isscalar(cancel.cancel_time)
+    return
+end
+if ~isfield(row, 'start') || ~isfield(row, 'end') || ...
+        ~isnumeric(row.start) || ~isscalar(row.start) || ...
+        ~isnumeric(row.end) || ~isscalar(row.end)
+    return
+end
+if row.end <= cancel.cancel_time
+    bucket = 'completed';
+elseif row.start <= cancel.cancel_time && cancel.cancel_time < row.end
+    bucket = 'frozen';
+elseif row.start > cancel.cancel_time
+    bucket = 'unstarted';
 end
 end
 

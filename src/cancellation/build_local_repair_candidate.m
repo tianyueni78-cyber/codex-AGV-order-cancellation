@@ -11,12 +11,12 @@ end
 
 candidate = remove_cancelled_machine_operations( ...
     problem, schedule, state, cancel);
-candidate.machineTable = prune_cancelled_job_records( ...
-    candidate.machineTable, cancel.job_id);
 [machineIsFeasible, machineReport] = ...
     check_machine_table_feasibility(candidate.machineTable);
 candidate.report.machineConflictCheck = machineReport;
 if ~candidate.isFeasible
+    candidate.AGVTable = prune_unstarted_cancelled_agv_tasks( ...
+        candidate.AGVTable, cancel);
     candidate = mark_final_feasibility(candidate);
     return
 end
@@ -30,13 +30,21 @@ agvCandidate = remove_cancelled_agv_tasks( ...
 if ~agvCandidate.isFeasible
     candidate.report.agvConflictCheck = agvCandidate.report;
     candidate = merge_agv_candidate(candidate, agvCandidate);
-    candidate.machineTable = prune_cancelled_job_records( ...
-        candidate.machineTable, cancel.job_id);
+    candidate.AGVTable = prune_unstarted_cancelled_agv_tasks( ...
+        candidate.AGVTable, cancel);
+    candidate.report.removedFinalUnstartedCanceledAgvTaskCount = ...
+        count_removed_unstarted_cancelled_agv_tasks( ...
+        agvCandidate.AGVTable, candidate.AGVTable, cancel);
+    candidate.report.remainingFinalUnstartedCanceledAgvTaskCount = ...
+        count_remaining_unstarted_cancelled_agv_tasks(candidate.AGVTable, ...
+        cancel);
     candidate = mark_final_feasibility(candidate);
     return
 end
 
 candidate.AGVTable = agvCandidate.AGVTable;
+candidate.AGVTable = prune_unstarted_cancelled_agv_tasks( ...
+    candidate.AGVTable, cancel);
 candidate.removed_agv_tasks = agvCandidate.removed_agv_tasks;
 candidate.report.removedAgvTaskCount = ...
     agvCandidate.report.removedAgvTaskCount;
@@ -44,9 +52,10 @@ candidate.report.frozenProcessingAgvTaskCount = ...
     agvCandidate.report.frozenProcessingAgvTaskCount;
 candidate.report.frozenProcessingAgvTasks = ...
     agvCandidate.report.frozenProcessingAgvTasks;
+candidate.report.unknownAgvTaskCount = ...
+    agvCandidate.report.unknownAgvTaskCount;
+candidate.report.unknownAgvTasks = agvCandidate.report.unknownAgvTasks;
 candidate.report = append_check_errors(candidate.report, machineReport);
-candidate.machineTable = prune_cancelled_job_records( ...
-    candidate.machineTable, cancel.job_id);
 
 [agvIsFeasible, agvReport] = ...
     check_agv_table_feasibility(candidate.AGVTable);
@@ -63,17 +72,13 @@ candidate.isFeasible = machineIsFeasible && agvIsFeasible && ...
     isempty(candidate.report.rejectedReasons);
 end
 
-function machineTable = prune_cancelled_job_records(machineTable, jobId)
-machineTable = prune_job_from_table(machineTable, jobId, 'job');
-end
-
-function tableValue = prune_job_from_table(tableValue, jobId, fieldName)
-if ~iscell(tableValue)
+function AGVTable = prune_unstarted_cancelled_agv_tasks(AGVTable, cancel)
+if ~iscell(AGVTable)
     return
 end
 
-for outerIdx = 1:numel(tableValue)
-    blocks = tableValue{outerIdx};
+for agvIdx = 1:numel(AGVTable)
+    blocks = AGVTable{agvIdx};
     if isempty(blocks) || ~isstruct(blocks)
         continue
     end
@@ -81,12 +86,76 @@ for outerIdx = 1:numel(tableValue)
     keep = true(1, numel(blocks));
     for blockIdx = 1:numel(blocks)
         block = blocks(blockIdx);
-        if isfield(block, fieldName) && block.(fieldName) == jobId
+        if ~isfield(block, 'job') || block.job ~= cancel.job_id
+            continue
+        end
+
+        startTime = read_optional_time(block, 'start');
+        endTime = read_optional_time(block, 'end');
+        if ~isempty(startTime) && ~isempty(endTime) && ...
+                startTime > cancel.cancel_time
             keep(blockIdx) = false;
         end
     end
-    tableValue{outerIdx} = blocks(keep);
+    AGVTable{agvIdx} = blocks(keep);
 end
+end
+
+function count = count_removed_unstarted_cancelled_agv_tasks( ...
+    beforeAGVTable, afterAGVTable, cancel)
+count = count_unstarted_cancelled_agv_tasks(beforeAGVTable, cancel) - ...
+    count_unstarted_cancelled_agv_tasks(afterAGVTable, cancel);
+if count < 0
+    count = 0;
+end
+end
+
+function count = count_remaining_unstarted_cancelled_agv_tasks(AGVTable, ...
+    cancel)
+count = count_unstarted_cancelled_agv_tasks(AGVTable, cancel);
+end
+
+function count = count_unstarted_cancelled_agv_tasks(AGVTable, cancel)
+count = 0;
+if ~iscell(AGVTable) || ~isstruct(cancel) || ~isfield(cancel, 'job_id')
+    return
+end
+
+for agvIdx = 1:numel(AGVTable)
+    blocks = AGVTable{agvIdx};
+    if isempty(blocks) || ~isstruct(blocks)
+        continue
+    end
+
+    for blockIdx = 1:numel(blocks)
+        block = blocks(blockIdx);
+        if ~isfield(block, 'job') || block.job ~= cancel.job_id
+            continue
+        end
+
+        startTime = read_optional_time(block, 'start');
+        endTime = read_optional_time(block, 'end');
+        if isempty(startTime) || isempty(endTime)
+            continue
+        end
+
+        if startTime > cancel.cancel_time
+            count = count + 1;
+        end
+    end
+end
+end
+
+function value = read_optional_time(block, fieldName)
+value = [];
+if ~isstruct(block) || ~isfield(block, fieldName)
+    return
+end
+fieldValue = block.(fieldName);
+if ~isnumeric(fieldValue) || ~isscalar(fieldValue) || ~isfinite(fieldValue)
+    return
+end
+value = fieldValue;
 end
 
 function candidate = merge_agv_candidate(candidate, agvCandidate)
