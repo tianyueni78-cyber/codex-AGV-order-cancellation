@@ -365,6 +365,7 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 M：多扰动接口边界](docs/00_system_overview/stage_m_multi_disruption_interface_plan.md) | 区分订单取消、机器故障、AGV 故障三类扰动；明确本项目当前只实现订单取消，不实现机器故障、AGV 故障、新订单插入或强化学习。           |
 | [阶段 N：随机订单取消复现包](docs/repro/order_cancellation_repro_guide.md)                     | 随机订单取消 demo、批量实验入口、参数设置、CSV 输出字段、运行方式和复现边界。                                |
 | [阶段 O：策略基线对比结果说明](docs/repro/order_cancellation_strategy_baseline_results.md)      | 记录 `auto_selection`、`local_only`、`complete_only` 三种策略基线的中规模实验结果、统计摘要和结论边界。 |
+| [项目总收口文档](docs/repro/project_final_summary.md) | 面向导师汇报的总收口页：项目定位、交付状态、baseline、输出价值、可写结论和边界。 |
 | [订单取消输出追踪](docs/repro/order_cancellation_output_traceability.md) | 批量实验输出字段、CSV 路径、结果可追踪性和复现实验的输出约定。 |
 | [订单取消交付清单](docs/repro/order_cancellation_delivery_checklist.md) | 交付检查项、阶段完成项、验收内容和可冻结版本的检查口径。 |
 | [订单取消大规模实验计划](docs/repro/order_cancellation_large_experiment_plan.md) | 大规模实验的计划边界、参数思路和后续验证方向。 |
