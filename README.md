@@ -8,7 +8,7 @@
 
 - 问题：订单取消后的动态重调度，输入是一个已经生成的正常 FJSP-AGV 调度计划和一个 `cancel_time`。
 - 算法：先截取取消时刻状态，再生成局部修复候选和完全重调度候选，最后做可行性校验、指标评价和策略选择。
-- 交付形态：阶段性交付代码包，不是 demo。
+- 交付形态：已冻结的阶段性交付代码包，不是 demo。
 - 主要能力：算法主链路、实验入口、CSV 诊断、失败追踪、数据集覆盖扫描、历史 batch 审计、代码包规模盘点。
 
 ## 2. 快速入口
@@ -19,6 +19,7 @@
 - 失败样本抽取：[`scripts/extract_order_cancellation_failure_cases.m`](scripts/extract_order_cancellation_failure_cases.m)
 - 历史运行目录审计：[`scripts/catalog_order_cancellation_batch_runs.m`](scripts/catalog_order_cancellation_batch_runs.m)
 - 代码包规模盘点：[`scripts/audit_order_cancellation_package_inventory.m`](scripts/audit_order_cancellation_package_inventory.m)
+- 冻结边界与证据索引：[`docs/repro/project_freeze_and_evidence_index.md`](docs/repro/project_freeze_and_evidence_index.md)
 - 最终交付说明：[`docs/repro/order_cancellation_final_delivery_summary.md`](docs/repro/order_cancellation_final_delivery_summary.md)
 
 ## 3. 怎么运行
@@ -37,7 +38,7 @@ matlab -batch "run('scripts/verify_order_cancellation_batch_csv.m')"
 
 ## Current Status / 当前状态
 
-当前项目已经形成订单取消动态重调度算法代码包的阶段性交付版本。
+当前项目已经形成订单取消动态重调度算法代码包的已冻结收口版本。
 
 这不是 demo，而是包含算法主链路、实验入口、CSV 诊断、失败追踪、数据集覆盖扫描、历史 batch 审计和代码包规模盘点的代码包。
 
@@ -63,7 +64,7 @@ matlab -batch "run('scripts/verify_order_cancellation_batch_csv.m')"
 - 最终说明文档：
   - [Order Cancellation Code Package Final Delivery Summary](docs/repro/order_cancellation_final_delivery_summary.md)
 
-当前判断是：项目已经达到阶段性交付版本，可以收尾；后续不建议继续修改主算法链路。
+当前判断是：主算法链路已经冻结，可以收尾；后续只做文档修订和证据补齐，不再改主线。
 
 ## 1. 问题范围
 
@@ -366,12 +367,13 @@ outputs/        生成的输出和日志，不提交 Git
 | [阶段 N：随机订单取消复现包](docs/repro/order_cancellation_repro_guide.md)                     | 随机订单取消 demo、批量实验入口、参数设置、CSV 输出字段、运行方式和复现边界。                                |
 | [阶段 O：策略基线对比结果说明](docs/repro/order_cancellation_strategy_baseline_results.md)      | 记录 `auto_selection`、`local_only`、`complete_only` 三种策略基线的中规模实验结果、统计摘要和结论边界。 |
 | [项目总收口文档](docs/repro/project_final_summary.md) | 面向导师汇报的总收口页：项目定位、交付状态、baseline、输出价值、可写结论和边界。 |
+| [项目冻结边界与证据索引](docs/repro/project_freeze_and_evidence_index.md) | 冻结边界、证据入口、baseline 封口、最终交付物清单和补齐工作计划。 |
 | [订单取消输出追踪](docs/repro/order_cancellation_output_traceability.md) | 批量实验输出字段、CSV 路径、结果可追踪性和复现实验的输出约定。 |
 | [订单取消交付清单](docs/repro/order_cancellation_delivery_checklist.md) | 交付检查项、阶段完成项、验收内容和可冻结版本的检查口径。 |
 | [订单取消大规模实验计划](docs/repro/order_cancellation_large_experiment_plan.md) | 大规模实验的计划边界、参数思路和后续验证方向。 |
 | [订单取消大规模实验结果](docs/repro/order_cancellation_large_experiment_results.md) | 大规模实验的结果摘要、统计口径和边界说明。 |
 | [阶段 A10：订单取消算法包状态说明](docs/repro/order_cancellation_algorithm_package_status.md)    | 订单取消动态重调度算法包的代码规模、模块链路、已验证能力、策略边界和后续扩展方向。                        |
-| [阶段 A19：最终交付说明](docs/repro/order_cancellation_final_delivery_summary.md) | 订单取消代码包的阶段性交付结论、代码规模、已验证结果、可写结论和不可夸大结论。 |
+| [阶段 A19：最终交付说明](docs/repro/order_cancellation_final_delivery_summary.md) | 订单取消代码包的冻结收口结论、代码规模、已验证结果、可写结论和不可夸大结论。 |
 
 | [阶段 G-N 后续路线图](docs/00_system_overview/post_stage_f_flexible_dispatch_roadmap.md) | 从第一版闭环走向更灵活订单取消调度的后续阶段 |
 | [项目文件导览](docs/00_system_overview/repository_file_guide.md) | 仓库目录和关键文件用途说明 |
@@ -393,8 +395,8 @@ outputs/        生成的输出和日志，不提交 Git
 
 当前项目可以明确表述为：
 
-- 阶段 A-G 已形成第一版订单取消动态重调度闭环。
-- 阶段 M、N、O 继续把边界、复现和策略对比补齐了。
+- 主线已经冻结，不再继续扩展算法主链路。
+- 阶段 A-G 的闭环已经完成，阶段 M、N、O 主要补齐边界、复现和策略对比证据。
 - 当前已经具备可复现实验入口、CSV 诊断、失败追踪、数据覆盖扫描、历史 batch 审计和代码包规模盘点。
 - 当前结论仍不支持全局最优、多策略论文级最终结论或全量泛化；但已完成 Brandimarte `Mk01`–`Mk10` 的 small smoke regression。
-- 详情以 [`docs/repro/order_cancellation_final_delivery_summary.md`](docs/repro/order_cancellation_final_delivery_summary.md) 为准。
+- 冻结边界与证据索引以 [`docs/repro/project_freeze_and_evidence_index.md`](docs/repro/project_freeze_and_evidence_index.md) 为准。
