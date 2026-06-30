@@ -14,6 +14,7 @@
 ## 2. 快速入口
 
 - 主实验入口：[`scripts/run_random_order_cancellation_batch.m`](scripts/run_random_order_cancellation_batch.m)
+- 主实验入口分析：[`docs/06_experiments/main_experiment_entry_analysis.md`](docs/06_experiments/main_experiment_entry_analysis.md)
 - CSV 验证：[`scripts/verify_order_cancellation_batch_csv.m`](scripts/verify_order_cancellation_batch_csv.m)
 - 数据覆盖扫描：[`scripts/scan_order_cancellation_dataset_coverage.m`](scripts/scan_order_cancellation_dataset_coverage.m)
 - 失败样本抽取：[`scripts/extract_order_cancellation_failure_cases.m`](scripts/extract_order_cancellation_failure_cases.m)
